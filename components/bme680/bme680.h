@@ -46,10 +46,23 @@
 #include <stdbool.h>
 #include <i2cdev.h>
 #include <esp_err.h>
+#include <sensor_handler.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define BME680_LIB_VERSION_MAJOR 1
+#define BME680_LIB_VERSION_MINOR 0
+#define BME680_LIB_VERSION_PATCH 0
+#define BME680_LIB_VERSION  (BME680_LIB_VERSION_MAJOR << 16)|(BME680_LIB_VERSION_MINOR << 8)|BME680_LIB_VERSION_PATCH
+// #define LIB_VERSION_BME680 1.0
+
+#define BME680_CONF_FILE_NAME "conf.cfg"
+#define BME680_DATA_FILE_NAME "dat.txt"
+#define BME680_FILE_DIR "bme680"
+#define BME680_CONF_FILE_PATH BME680_FILE_DIR "/" BME680_CONF_FILE_NAME
+#define BME680_DATA_FILE_PATH BME680_FILE_DIR "/" BME680_DATA_FILE_NAME
 
 #define BME680_I2C_ADDR_0 0x76
 #define BME680_I2C_ADDR_1 0x77
@@ -61,6 +74,13 @@ extern "C" {
 #define BME680_HEATER_PROFILES         10   //!< max. 10 heater profiles 0 ... 9
 #define BME680_HEATER_NOT_USED         -1   //!< heater not used profile
 
+typedef enum
+{
+  BME680_OUT_TEMP_ID = 0,
+  BME680_OUT_PRESSURE_ID,
+  BME680_OUT_RH_ID,
+  BME680_OUT_GAS_ID
+};
 /**
  * Fixed point sensor values (fixed THPG values)
  */
@@ -173,6 +193,16 @@ typedef struct
 } bme680_calib_data_t;
 
 /**
+ * Device info.
+ */
+typedef struct
+{
+    uint8_t pack_id;    // Package Identification
+    uint8_t dev_id;     // Device Identification
+    uint8_t status;
+} bme680_inf_t;
+
+/**
  * BME680 sensor device data structure type
  */
 typedef struct
@@ -184,6 +214,9 @@ typedef struct
 
     bme680_settings_t settings;     //!< Sensor settings
     bme680_calib_data_t calib_data; //!< Calibration data of the sensor
+    bme680_inf_t info;
+
+    sensor_t sen;
 } bme680_t;
 
 /**
@@ -196,7 +229,7 @@ typedef struct
  * @param scl_gpio GPIO pin for SCL
  * @return `ESP_OK` on success
  */
-esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio);
+esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id);
 
 /**
  * @brief Free device descriptor
@@ -259,7 +292,17 @@ esp_err_t bme680_force_measurement(bme680_t *dev);
  * @param[out] duration Duration of TPHG measurement cycle in ticks or 0 on error
  * @return `ESP_OK` on success
  */
-esp_err_t bme680_get_measurement_duration(const bme680_t *dev, uint32_t *duration);
+esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration);
+/**
+ * @brief   Get running measurement status
+ *
+ * The function updates the measurement status indicating whether there are new
+ * measurement results.
+ *
+ * @param dev Device descriptor
+ * @return `ESP_OK` on success
+ */
+esp_err_t bme680_get_measurement_status(bme680_t *dev);
 
 /**
  * @brief   Get the measurement status
@@ -334,6 +377,14 @@ esp_err_t bme680_measure_fixed(bme680_t *dev, bme680_values_fixed_t *results);
  * @return `ESP_OK` on success
  */
 esp_err_t bme680_measure_float(bme680_t *dev, bme680_values_float_t *results);
+
+/**
+ * @brief   Get sensor data and store it on the sensor handler structure
+ *
+ * @param dev Device descriptor
+ * @return `ESP_OK` on success
+ */
+esp_err_t bme680_iot_sen_measurement(void *dev);
 
 /**
  * @brief   Set the oversampling rates for measurements

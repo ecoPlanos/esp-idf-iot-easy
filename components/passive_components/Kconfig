@@ -1,0 +1,8 @@
+menu "Passive Components"
+
+config PASSIVE_COMPONENTS_MAX_REF_NAME_LEN
+    int "Maximum component reference name length."
+    default 6
+    range 1 254
+
+endmenu

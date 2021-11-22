@@ -26,7 +26,7 @@
  * @defgroup tsl2591 tsl2591
  * @{
  *
- * ESP-IDF driver for TSL2591 light-to-digital. 
+ * ESP-IDF driver for TSL2591 light-to-digital.
  *
  * Copyright (c) 2020 Julian Doerner <https://github.com/juliandoerner>
  *
@@ -36,14 +36,33 @@
 #ifndef __TSL2591_H__
 #define __TSL2591_H__
 
+#include <driver/gpio.h>
 #include <i2cdev.h>
 #include <esp_err.h>
+#include <sensor_handler.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#define TSL2591_LIB_VERSION_MAJOR 1
+#define TSL2591_LIB_VERSION_MINOR 0
+#define TSL2591_LIB_VERSION_PATCH 0
+#define TSL2591_LIB_VERSION  (TSL2591_LIB_VERSION_MAJOR << 16)|(TSL2591_LIB_VERSION_MINOR << 8)|TSL2591_LIB_VERSION_PATCH
+
+#define TSL2591_CONF_FILE_NAME "conf.cfg"
+#define TSL2591_DATA_FILE_NAME "dat.txt"
+#define TSL2591_FILE_DIR "TSL2591"
+#define TSL2591_CONF_FILE_PATH TSL2591_FILE_DIR "/" TSL2591_CONF_FILE_NAME
+#define TSL2591_DATA_FILE_PATH TSL2591_FILE_DIR "/" TSL2591_DATA_FILE_NAME
+
 #define TSL2591_I2C_ADDR   0x29 // TSL2591 has only one i2c address.
+
+typedef enum
+{
+  TSL2591_OUT_CH0_ID = 0,
+  TSL2591_OUT_CH1_ID
+};
 
 /**
  * Power status. The sensor measures only if ALS an Power is on.
@@ -64,7 +83,7 @@ typedef enum
 } tsl2591_als_status_t;
 
 /**
- * Interrupts. TSL2591 has two interrupt sources. 
+ * Interrupts. TSL2591 has two interrupt sources.
  * Check the datasheet for details.
  */
 typedef enum
@@ -76,7 +95,7 @@ typedef enum
 } tsl2591_interrupt_t;
 
 /**
- * Interrupt sleep setting. 
+ * Interrupt sleep setting.
  */
 typedef enum
 {
@@ -89,12 +108,12 @@ typedef enum
  */
 typedef enum
 {
-    TSL2591_INTEGRATION_100MS = 0, //!< Default 
-    TSL2591_INTEGRATION_200MS,      
-    TSL2591_INTEGRATION_300MS,      
-    TSL2591_INTEGRATION_400MS,      
-    TSL2591_INTEGRATION_500MS,      
-    TSL2591_INTEGRATION_600MS       
+    TSL2591_INTEGRATION_100MS = 0, //!< Default
+    TSL2591_INTEGRATION_200MS,
+    TSL2591_INTEGRATION_300MS,
+    TSL2591_INTEGRATION_400MS,
+    TSL2591_INTEGRATION_500MS,
+    TSL2591_INTEGRATION_600MS
 } tsl2591_integration_time_t;
 
 /**
@@ -132,14 +151,34 @@ typedef enum
 } tsl2591_persistence_filter_t;
 
 /**
+ * Device info
+ */
+typedef enum
+{
+  TSL2591_REGISTER_PACKAGE_PID = 0x11,    // Package Identification
+  TSL2591_REGISTER_DEVICE_ID = 0x12,      // Device Identification
+  TSL2591_REGISTER_DEVICE_STATUS = 0x13,  // Internal Status
+} tsl2591_info_t;
+
+/**
  * Device settings.
  */
-typedef struct 
+typedef struct
 {
     uint8_t enable_reg;
     uint8_t control_reg;
     uint8_t persistence_reg;
 } tsl2591_settings_t;
+
+/**
+ * Device info.
+ */
+typedef struct
+{
+    uint8_t pack_id;    // Package Identification
+    uint8_t dev_id;     // Device Identification
+    uint8_t status;
+} tsl2591_inf_t;
 
 /**
  * Device descriptor.
@@ -148,7 +187,8 @@ typedef struct
 {
     i2c_dev_t i2c_dev;
     tsl2591_settings_t settings;
-
+    tsl2591_inf_t info;
+    sensor_t sen;
 } tsl2591_t;
 
 
@@ -161,7 +201,7 @@ typedef struct
  * @param scl_gpio SCL GPIO pin
  * @return `ESP_OK` on success
  */
-esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio);
+esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id);
 
 /**
  * @brief Free device descriptor
@@ -178,6 +218,13 @@ esp_err_t tsl2591_free_desc(tsl2591_t *dev);
  * @return `ESP_OK` on success
  */
 esp_err_t tsl2591_init(tsl2591_t *dev);
+
+/**
+ * @brief Read channel data and store it on the sensor handler structure
+ *
+ * @param dev Device descriptor
+ */
+esp_err_t tsl2591_iot_sen_measurement(void *dev);
 
 /**
  * @brief Read channel data
@@ -320,7 +367,7 @@ esp_err_t tsl2591_get_gain(tsl2591_t *dev, tsl2591_gain_t *gain);
  * @brief Set device persistence filter
  *
  * @param dev Device descriptor
- * @param filter Persistence filter 
+ * @param filter Persistence filter
  * @return `ESP_OK` on success
  */
 esp_err_t tsl2591_set_persistence_filter(tsl2591_t *dev, tsl2591_persistence_filter_t filter);
@@ -433,6 +480,20 @@ esp_err_t tsl2591_get_als_intr_flag(tsl2591_t *dev, bool *flag);
  * @return `ESP_OK` on success
  */
 esp_err_t tsl2591_get_als_valid_flag(tsl2591_t *dev, bool *flag);
+
+/**************************************************************************/
+/*!
+    @brief  Enables the chip, so it's ready to take readings
+*/
+/**************************************************************************/
+esp_err_t tsl2591_basic_enable(tsl2591_t *dev);
+
+/**************************************************************************/
+/*!
+    @brief Disables the chip, so it's in power down mode
+*/
+/**************************************************************************/
+esp_err_t tsl2591_basic_disable(tsl2591_t *dev);
 
 #ifdef __cplusplus
 }

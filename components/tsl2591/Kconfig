@@ -1,0 +1,12 @@
+menu "Data Storage"
+
+config USE_TSL2591_DATA_STORAGE
+    bool "Sensor data storage."
+    default false
+    help "Let sensor data be stored."
+config USE_TSL2591_CONF_STORAGE
+    bool "Sensor configurations storage."
+    default false
+    help "Let sensor data be stored and updated."
+
+endmenu

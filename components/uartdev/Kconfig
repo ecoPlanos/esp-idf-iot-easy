@@ -1,0 +1,21 @@
+menu "UART Dev"
+    config UARTDEV_TIMEOUT
+        int "UART transaction timeout, milliseconds"
+        default 1000
+        range 100 5000
+
+    config UARTDEV_NOLOCK
+    	bool "Disable the use of mutexes"
+    	default n
+    	help
+    		Attention! After enabling this option, all UART device
+    		drivers will become non-thread safe.
+    		Use this option if you need to access your UART devices
+    		from interrupt handlers.
+    config UARTDEV_RX_BUF_SIZE
+        int "UARTDEV_RX_BUF_SIZE"
+        default 1024
+        range 1 4096
+        help
+            UART Rx buffer size.
+endmenu

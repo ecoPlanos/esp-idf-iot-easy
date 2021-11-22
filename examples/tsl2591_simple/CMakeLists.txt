@@ -6,3 +6,4 @@ set(EXTRA_COMPONENT_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../../components)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(example-tsl2591_simple)
+idf_build_set_property(COMPILE_OPTIONS "-fdiagnostics-color=always" APPEND)

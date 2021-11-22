@@ -1,0 +1,10 @@
+menu "Data Storage"
+config USE_BME680_DATA_STORAGE
+    bool "Sensor data storage."
+    default false
+    help "Let sensor data be stored."
+config USE_BME680_CONF_STORAGE
+    bool "Sensor configurations storage."
+    default false
+    help "Let sensor data be stored and updated."
+endmenu

@@ -36,12 +36,14 @@
  *
  * BSD Licensed as described in the file LICENSE
  */
-#include <string.h>
-#include <stdlib.h>
-#include <esp_log.h>
+#include <data_manager.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <esp_log.h>
 #include <esp_idf_lib_helpers.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
 #include "bme680.h"
 
 #define I2C_FREQ_HZ 1000000 // Up to 3.4MHz, but esp-idf only supports 1MHz
@@ -283,6 +285,7 @@ static esp_err_t bme680_set_mode(bme680_t *dev, uint8_t mode)
 
 static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
 {
+    struct timeval tv;
     if (!dev->meas_started)
     {
         ESP_LOGE(TAG, "Measurement was not started");
@@ -307,7 +310,8 @@ static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
             return ESP_ERR_INVALID_RESPONSE;
         }
     }
-
+    gettimeofday(&tv, NULL);
+    dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
     dev->meas_started = false;
     raw_data->gas_index = dev->meas_status & BME680_GAS_MEAS_INDEX_BITS;
 
@@ -315,7 +319,6 @@ static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
     I2C_DEV_CHECK(&dev->i2c_dev, i2c_dev_read_reg(&dev->i2c_dev, BME680_REG_RAW_DATA_0, raw, BME680_REG_RAW_DATA_LEN));
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
-
     raw_data->gas_valid     = bme_get_reg_bit(raw[BME680_RAW_G_OFF + 1], BME680_GAS_VALID);
     raw_data->heater_stable = bme_get_reg_bit(raw[BME680_RAW_G_OFF + 1], BME680_HEAT_STAB_R);
 
@@ -324,7 +327,14 @@ static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
     raw_data->humidity       = msb_lsb_to_type(uint16_t, raw, BME680_RAW_H_OFF);
     raw_data->gas_resistance = ((uint16_t) raw[BME680_RAW_G_OFF] << 2) | raw[BME680_RAW_G_OFF + 1] >> 6;
     raw_data->gas_range      = raw[BME680_RAW_G_OFF + 1] & BME680_GAS_RANGE_R_BITS;
-
+    dev->sen.sen_outs[BME680_OUT_TEMP_ID].measurement_raw = raw_data->temperature;
+    // dev->sen.sen_outs[BME680_OUT_TEMP_ID].timestamp = timestamp;
+    dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].measurement_raw = raw_data->pressure;
+    // dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].timestamp = timestamp;
+    dev->sen.sen_outs[BME680_OUT_RH_ID].measurement_raw = raw_data->humidity;
+    // dev->sen.sen_outs[BME680_OUT_RH_ID].timestamp = timestamp;
+    dev->sen.sen_outs[BME680_OUT_GAS_ID].measurement_raw = raw_data->gas_range;
+    // dev->sen.sen_outs[BME680_OUT_GAS_ID].timestamp = timestamp;
     /*
      * BME680_REG_MEAS_STATUS_1, BME680_REG_MEAS_STATUS_2
      * These data are not documented and it is not really clear when they are filled
@@ -352,7 +362,7 @@ static int16_t bme680_convert_temperature(bme680_t *dev, uint32_t raw_temperatur
             * ((int32_t) cd->par_t3)) >> 14;
     cd->t_fine = (int32_t) (var1 + var2);
     temperature = (cd->t_fine * 5 + 128) >> 8;
-
+    dev->sen.sen_outs[BME680_OUT_TEMP_ID].temperature = temperature / 100.0f;
     return temperature;
 }
 
@@ -402,7 +412,7 @@ static uint32_t bme680_convert_pressure(bme680_t *dev, uint32_t raw_pressure)
 
     pressure_comp = (int32_t)(pressure_comp) + ((var1 + var2 + var3 +
                     ((int32_t)cd->par_p7 << 7)) >> 4);
-
+    dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].pressure = ((uint32_t)pressure_comp) / 100.0f;
     return (uint32_t)pressure_comp;
 }
 
@@ -447,7 +457,7 @@ static uint32_t bme680_convert_humidity(bme680_t *dev, uint16_t raw_humidity)
         humidity = 100000;
     else if (humidity < 0)
         humidity = 0;
-
+    dev->sen.sen_outs[BME680_OUT_RH_ID].relative_humidity = ((uint32_t)humidity) / 1000.0f;
     return (uint32_t) humidity;
 }
 
@@ -484,6 +494,7 @@ static uint32_t bme680_convert_gas(bme680_t *dev, uint16_t gas, uint8_t gas_rang
     bme680_calib_data_t *cd = &dev->calib_data;
 
     float var1 = (1340.0 + 5.0 * cd->range_sw_err) * lookup_table[gas_range][0];
+    dev->sen.sen_outs[BME680_OUT_GAS_ID].resistance = (float)(var1 * lookup_table[gas_range][1] / (gas - 512.0 + var1));
     return var1 * lookup_table[gas_range][1] / (gas - 512.0 + var1);
 }
 
@@ -550,10 +561,10 @@ static uint8_t bme680_heater_resistance(const bme680_t *dev, uint16_t temp)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio)
+esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id)
 {
     CHECK_ARG(dev);
-
+    ESP_LOGI(TAG,"Initializing BME680 descriptor");
     if (addr != BME680_I2C_ADDR_0 &&  addr != BME680_I2C_ADDR_1)
     {
         ESP_LOGE(TAG, "Invalid I2C address");
@@ -567,6 +578,57 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
 #if HELPER_TARGET_IS_ESP32
     dev->i2c_dev.cfg.master.clk_speed = I2C_FREQ_HZ;
 #endif
+memset(&dev->sen, 0, sizeof(sensor_t));
+sensor_init(&dev->sen,4);
+strncpy(dev->sen.name, "BME680\0", 7);
+dev->sen.lib_id = SEN_BME680_LIB_ID;
+dev->sen.sen_id = sen_id;
+dev->sen.version = 1;
+dev->sen.com_type = SEN_COM_TYPE_DIGITAL_COM;
+dev->sen.min_period_us = 0;
+dev->sen.delay_s_ms = 0;
+dev->sen.out_nr = 4; //temperature, pressure, RH, gas
+dev->sen.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+dev->sen.addr = BME680_I2C_ADDR_0;
+dev->sen.period_ms=2420;
+dev->sen.get_data=bme680_iot_sen_measurement;
+dev->sen.dev=dev;
+
+dev->sen.sen_status.initialized = false;
+dev->sen.sen_status.fail_cnt = 0;
+dev->sen.sen_status.fail_time = 0;
+
+dev->sen.sen_outs[BME680_OUT_TEMP_ID].out_id=BME680_OUT_TEMP_ID;
+dev->sen.sen_outs[BME680_OUT_TEMP_ID].out_type = SEN_TYPE_INTERNAL_TEMPERATURE;
+dev->sen.sen_outs[BME680_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+// dev->sen.sen_outs[BME680_OUT_TEMP_ID].bit_nr=16;
+// dev->sen.sen_outs[BME680_OUT_TEMP_ID].period_ms=1500;
+// dev->sen.sen_outs[BME680_OUT_TEMP_ID].measurement_raw=0;
+// dev->sen.sen_outs[BME680_OUT_TEMP_ID].timestamp=0;
+
+dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].out_id=BME680_OUT_PRESSURE_ID;
+dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
+dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+// dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].bit_nr=16;
+// dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].period_ms=1500;
+// dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].measurement_raw=0;
+// dev->sen.sen_outs[BME680_OUT_PRESSURE_ID].timestamp=0;
+
+dev->sen.sen_outs[BME680_OUT_RH_ID].out_id=BME680_OUT_RH_ID;
+dev->sen.sen_outs[BME680_OUT_RH_ID].out_type = SEN_TYPE_PRESSURE;
+dev->sen.sen_outs[BME680_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+// dev->sen.sen_outs[BME680_OUT_RH_ID].bit_nr=16;
+// dev->sen.sen_outs[BME680_OUT_RH_ID].period_ms=1500;
+// dev->sen.sen_outs[BME680_OUT_RH_ID].measurement_raw=0;
+// dev->sen.sen_outs[BME680_OUT_RH_ID].timestamp=0;
+
+dev->sen.sen_outs[BME680_OUT_GAS_ID].out_id=BME680_OUT_GAS_ID;
+dev->sen.sen_outs[BME680_OUT_GAS_ID].out_type = SEN_TYPE_GAS_RESISTANCE;
+dev->sen.sen_outs[BME680_OUT_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+// dev->sen.sen_outs[BME680_OUT_GAS_ID].bit_nr=16;
+// dev->sen.sen_outs[BME680_OUT_GAS_ID].period_ms=1500;
+// dev->sen.sen_outs[BME680_OUT_GAS_ID].measurement_raw=0;
+// dev->sen.sen_outs[BME680_OUT_GAS_ID].timestamp=0;
 
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
@@ -581,6 +643,7 @@ esp_err_t bme680_free_desc(bme680_t *dev)
 esp_err_t bme680_init_sensor(bme680_t *dev)
 {
     CHECK_ARG(dev);
+    ESP_LOGI(TAG,"Initializing BME680 sensor");
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
@@ -599,15 +662,17 @@ esp_err_t bme680_init_sensor(bme680_t *dev)
     I2C_DEV_CHECK(&dev->i2c_dev, write_reg_8_nolock(dev, BME680_REG_RESET, BME680_RESET_CMD));
     vTaskDelay(pdMS_TO_TICKS(BME680_RESET_PERIOD));
 
-    uint8_t chip_id = 0;
-    I2C_DEV_CHECK(&dev->i2c_dev, read_reg_8_nolock(dev, BME680_REG_ID, &chip_id));
-    if (chip_id != 0x61)
+    I2C_DEV_CHECK(&dev->i2c_dev, read_reg_8_nolock(dev, BME680_REG_ID, &dev->info.dev_id));
+    if (dev->info.dev_id != 0x61)
     {
         I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
-        ESP_LOGE(TAG, "Chip id %02x is wrong, should be 0x61", chip_id);
+        ESP_LOGE(TAG, "Chip id %02x is wrong, should be 0x61", dev->info.dev_id);
+        dev->sen.sen_status.initialized = false;
         return ESP_ERR_NOT_FOUND;
     }
-
+    dev->sen.sen_status.initialized = true;
+    dev->sen.sen_status.status_code = SEN_STATUS_OK;
+    dev->sen.sen_lib_version = BME680_LIB_VERSION;
     uint8_t buf[BME680_CDM_SIZE];
 
     I2C_DEV_CHECK(&dev->i2c_dev, i2c_dev_read_reg(&dev->i2c_dev, BME680_REG_CD1_ADDR, buf + BME680_CDM_OFF1, BME680_REG_CD1_LEN));
@@ -689,7 +754,7 @@ esp_err_t bme680_force_measurement(bme680_t *dev)
  * Timing formulas extracted from BME280 datasheet and test in some
  * experiments. They represent the maximum measurement duration.
  */
-esp_err_t bme680_get_measurement_duration(const bme680_t *dev, uint32_t *duration)
+esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration)
 {
     CHECK_ARG(dev && duration);
 
@@ -733,6 +798,15 @@ esp_err_t bme680_get_measurement_duration(const bme680_t *dev, uint32_t *duratio
     // and not for the typical durations and therefore tends to be too long, this
     // should not be a problem. Therefore, only one additional tick used.
     *duration += 1;
+    dev->sen.delay_s_ms = *duration;
+    return ESP_OK;
+}
+
+esp_err_t bme680_get_measurement_status(bme680_t *dev)
+{
+    CHECK_ARG(dev);
+
+    CHECK(read_reg_8(dev, BME680_REG_MEAS_STATUS_0, &dev->meas_status));
 
     return ESP_OK;
 }
@@ -778,6 +852,7 @@ esp_err_t bme680_get_results_fixed(bme680_t *dev, bme680_values_fixed_t *results
     if (dev->settings.heater_profile != BME680_HEATER_NOT_USED)
     {
         // convert gas only if raw data are valid and heater was stable
+        results->gas_resistance = 0;
         if (raw.gas_valid && raw.heater_stable)
             results->gas_resistance = bme680_convert_gas(dev, raw.gas_resistance, raw.gas_range);
         else if (!raw.gas_valid)
@@ -841,6 +916,22 @@ esp_err_t bme680_measure_float(bme680_t *dev, bme680_values_float_t *results)
     vTaskDelay(duration);
 
     return bme680_get_results_float(dev, results);
+}
+
+esp_err_t bme680_iot_sen_measurement(void *dev) {
+  bme680_t *bme_dev = (bme680_t*) dev;
+  esp_err_t res;
+  res = bme680_force_measurement(bme_dev);
+  ESP_ERROR_CHECK_WITHOUT_ABORT(res);
+  if (res != ESP_OK)
+    ESP_LOGE(TAG, "Could not read BME680 values. error: %d\n", res);
+  else {
+    // passive waiting until measurement results are available
+    vTaskDelay(bme_dev->sen.delay_s_ms);
+    // while(!bme680.meas_status)
+  }
+  bme680_values_float_t bme680_values_float;
+  return bme680_get_results_float(bme_dev, &bme680_values_float);
 }
 
 esp_err_t bme680_set_oversampling_rates(bme680_t *dev, bme680_oversampling_rate_t ost,
@@ -1007,4 +1098,3 @@ esp_err_t bme680_set_ambient_temperature(bme680_t *dev, int16_t ambient)
 
     return ESP_OK;
 }
-

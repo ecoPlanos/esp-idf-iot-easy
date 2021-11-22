@@ -9,8 +9,8 @@
 #define SDA_GPIO 4
 #define SCL_GPIO 5
 #else
-#define SDA_GPIO 18
-#define SCL_GPIO 19
+#define SDA_GPIO 27
+#define SCL_GPIO 26
 #endif
 
 #ifndef APP_CPU_NUM
@@ -29,8 +29,6 @@ void tsl2591_test(void *pvParameters)
     esp_err_t res;
     while (1)
     {
-        vTaskDelay(pdMS_TO_TICKS(100));
-
         if ((res = tsl2591_get_lux(&dev, &lux)) != ESP_OK)
             printf("Could not read lux value: %d\n", res);
         else
@@ -44,4 +42,3 @@ void app_main()
 
     xTaskCreatePinnedToCore(tsl2591_test, "tsl2591_test", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
 }
-

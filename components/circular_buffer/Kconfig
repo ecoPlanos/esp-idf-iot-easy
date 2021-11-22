@@ -1,0 +1,37 @@
+menu "Circular Data buffer"
+    choice CIRC_BUFF_DATA_TYPE
+        prompt "Circular buffer data type"
+        default CIRC_BUFF_SENSOR_T
+        help
+            Choose datatype for the circular buffer component.
+
+        config CIRC_BUFF_U8_T
+            bool "uint8_t"
+        config CIRC_BUFF_8_T
+            bool "int8_t"
+        config CIRC_BUFF_U16_T
+            bool "uint16_t"
+        config CIRC_BUFF_16_T
+            bool "int16_t"
+        config CIRC_BUFF_U32_T
+            bool "uint32_t"
+        config CIRC_BUFF_32_T
+            bool "int32_t"
+        config CIRC_BUFF_U64_T
+            bool "uint64_t"
+        config CIRC_BUFF_64_T
+            bool "int64_t"
+        config CIRC_BUFF_FLOAT_T
+            bool "float"
+        config CIRC_BUFF_S_T
+            bool "String"
+        config CIRC_BUFF_V_T
+            bool "Void"
+        config CIRC_BUFF_SENSOR_T
+            bool "Sensor"
+    endchoice
+    config CIRC_BUFF_S_STATIC_SIZE
+        depends on CIRC_BUFF_S_T
+        int "Max string length"
+        range 1 255
+endmenu

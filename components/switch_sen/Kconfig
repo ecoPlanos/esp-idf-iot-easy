@@ -1,0 +1,21 @@
+menu "Sensor Configuration"
+config SWITCH_SEN_ON_MIN_T
+    int "Minimum period of detections (us)."
+    default 4420420
+    range 0 86973087744
+    help "Acts like a filter discarding transitions occurring less than the specified time apart."
+config SWITCH_SEN_TRIGGER_DIR
+    bool "Trigger direction."
+    default true
+    help "Sensor detection is made at rising edge (true) or falling edge (false)."
+endmenu
+menu "Data Storage"
+config SWITCH_SEN_USE_DATA_STORAGE
+    bool "Sensor data storage."
+    default false
+    help "Let sensor data be stored."
+config SWITCH_SEN_USE_CONF_STORAGE
+    bool "Sensor configurations storage."
+    default false
+    help "Let sensor data be stored and updated."
+endmenu
