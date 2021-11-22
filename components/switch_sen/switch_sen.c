@@ -50,6 +50,7 @@ static void sw_trigger_task(void* arg) {
   // uint16_t sen_id;
   bool level, detect_running = false;
   uint64_t current_timestamp;
+  uint64_t current_trig = 0;
   struct timeval now;
   uint8_t io_num;
   for(;;) {
@@ -63,23 +64,25 @@ static void sw_trigger_task(void* arg) {
       current_timestamp = (now.tv_sec * 1000000LL + now.tv_usec);
 
       if((sen->sen_outs[0].out_trigger_dir == SEN_OUT_TRIGGER_FE) ^ level) {
-        if((current_timestamp - sen->timestamp) > sen->min_period_us) {
+        if((current_timestamp - current_trig) > sen->min_period_us) {
+        // if((current_timestamp - sen->timestamp) > sen->min_period_us) {
           if(detect_running) sen->sen_outs[0].trig.filtered_count++;
           else {
             detect_running = true;
             ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->name);
-            sen->timestamp = current_timestamp;
+            // sen->timestamp = current_timestamp;
+            current_trig = current_timestamp;
             sen->sen_outs[0].trig.filtered_count = 0;
           }
         } else {
           sen->sen_outs[0].trig.filtered_count++;
         }
       } else {
-        if((current_timestamp - sen->timestamp) > sen->min_period_us) {
-          // TODO: save data somwhere!?
+        if((current_timestamp - current_trig) > sen->min_period_us) {
           detect_running = false;
-          sen->sen_outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
-          // sen->sen_outs[0].trig.level = !level;
+          // sen->sen_outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
+          sen->sen_outs[0].trig.duration = (uint32_t)(current_timestamp - current_trig);
+          sen->timestamp = current_trig;
           ESP_LOGE(TAG, "%s detected something with duration: %u",sen->name, sen->sen_outs[0].trig.duration);
           ESP_LOGE(TAG, "%s interrupt counts: %u",sen->name, sen->sen_outs[0].trig.filtered_count);
         }
