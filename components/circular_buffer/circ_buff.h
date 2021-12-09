@@ -45,8 +45,8 @@ typedef void circ_buff_data_type_t;
 #elif CONFIG_CIRC_BUFF_SENSOR_T
 typedef struct{
   uint8_t id;                 //sensor identifier
-  sen_out_t *sen_outs;
-  // sen_status_t sen_status;
+  sen_out_t *outs;
+  // sen_status_t status;
   uint64_t timestamp;         //time when sensor data was sampled
 }circ_buff_data_type_t;
 // typedef sensor_t circ_buff_data_type_t;

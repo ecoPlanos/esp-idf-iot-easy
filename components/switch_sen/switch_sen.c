@@ -51,6 +51,7 @@ static void sw_trigger_task(void* arg) {
   bool level, detect_running = false;
   uint64_t current_timestamp;
   uint64_t current_trig = 0;
+  uint32_t current_filter_cnt = 0;
   struct timeval now;
   uint8_t io_num;
   for(;;) {
@@ -59,82 +60,88 @@ static void sw_trigger_task(void* arg) {
     // if(xQueueReceive(gpio_evt_queue, NULL, portMAX_DELAY)) {
     if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
       gettimeofday(&now,NULL);
-      level = gpio_get_level(sen->sen_outs[0].gpio);
-      ESP_LOGI(TAG, "Sensor %s (GPIO_%u) interrupt, val: %d\n", sen->name, io_num, level);
+      level = gpio_get_level(sen->outs[0].gpio);
+      ESP_LOGI(TAG, "Sensor %s (GPIO_%u) interrupt, val: %d\n", sen->info.name, io_num, level);
       current_timestamp = (now.tv_sec * 1000000LL + now.tv_usec);
 
-      if((sen->sen_outs[0].out_trigger_dir == SEN_OUT_TRIGGER_FE) ^ level) {
-        if((current_timestamp - current_trig) > sen->min_period_us) {
-        // if((current_timestamp - sen->timestamp) > sen->min_period_us) {
-          if(detect_running) sen->sen_outs[0].trig.filtered_count++;
+      if((sen->outs[0].out_trigger_dir == SEN_OUT_TRIGGER_FE) ^ level) {
+        if((current_timestamp - current_trig) > sen->conf.min_period_us) {
+        // if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
+          // if(detect_running) sen->outs[0].trig.filtered_count++;
+          if(detect_running) current_filter_cnt++;  //TODO: check if counter is correct!
           else {
             detect_running = true;
-            ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->name);
+            ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->info.name);
             // sen->timestamp = current_timestamp;
             current_trig = current_timestamp;
-            sen->sen_outs[0].trig.filtered_count = 0;
+            // sen->outs[0].trig.filtered_count = 0;
+            current_filter_cnt = 0;
           }
         } else {
-          sen->sen_outs[0].trig.filtered_count++;
+          // sen->outs[0].trig.filtered_count++;
+          current_filter_cnt++;
         }
       } else {
-        if((current_timestamp - current_trig) > sen->min_period_us) {
+        if((current_timestamp - current_trig) > sen->conf.min_period_us) {
           detect_running = false;
-          // sen->sen_outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
-          sen->sen_outs[0].trig.duration = (uint32_t)(current_timestamp - current_trig);
+          // sen->outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
+          sen->outs[0].m_raw = (uint32_t)(current_timestamp - current_trig);
+          sen->outs[0].trig_cnt = current_filter_cnt;
           sen->timestamp = current_trig;
-          ESP_LOGE(TAG, "%s detected something with duration: %u",sen->name, sen->sen_outs[0].trig.duration);
-          ESP_LOGE(TAG, "%s interrupt counts: %u",sen->name, sen->sen_outs[0].trig.filtered_count);
+          // ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
+          // ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);
+          ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].m_raw);
+          ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig_cnt);
         }
       }
 
 
-      // switch(sen->sen_outs[0].out_trigger_dir) {
+      // switch(sen->outs[0].out_trigger_dir) {
       //   case SEN_OUT_TRIGGER_RE:
       //     if(level) {
-      //       if((current_timestamp - sen->timestamp) > sen->min_period_us) {
-      //         if(detect_running) sen->sen_outs[0].trig.filtered_count++;
+      //       if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
+      //         if(detect_running) sen->outs[0].trig.filtered_count++;
       //         else {
       //           detect_running = true;
-      //           ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->name);
+      //           ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->info.name);
       //           sen->timestamp = current_timestamp;
-      //           sen->sen_outs[0].trig.filtered_count = 0;
+      //           sen->outs[0].trig.filtered_count = 0;
       //         }
       //       } else {
-      //         sen->sen_outs[0].trig.filtered_count++;
+      //         sen->outs[0].trig.filtered_count++;
       //       }
       //     } else {
-      //       if((current_timestamp - sen->timestamp) > sen->min_period_us) {
+      //       if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
       //         // TODO: save data somwhere!
       //         detect_running = false;
-      //         sen->sen_outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
-      //         // sen->sen_outs[0].trig.level = !level;
-      //         ESP_LOGE(TAG, "%s detected something with duration: %u",sen->name, sen->sen_outs[0].trig.duration);
-      //         ESP_LOGE(TAG, "%s interrupt counts: %u",sen->name, sen->sen_outs[0].trig.filtered_count);
+      //         sen->outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
+      //         // sen->outs[0].trig.level = !level;
+      //         ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
+      //         ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);
       //       }
       //     }
       //   break;
       //   case SEN_OUT_TRIGGER_FE:
       //     if(!level) {
-      //       if((current_timestamp - sen->timestamp) > sen->min_period_us) {
-      //         if(detect_running) sen->sen_outs[0].trig.filtered_count++;
+      //       if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
+      //         if(detect_running) sen->outs[0].trig.filtered_count++;
       //         else {
       //           detect_running = true;
-      //           ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->name);
+      //           ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->info.name);
       //           sen->timestamp = current_timestamp;
-      //           sen->sen_outs[0].trig.filtered_count = 0;
+      //           sen->outs[0].trig.filtered_count = 0;
       //         }
       //       } else {
-      //         sen->sen_outs[0].trig.filtered_count++;
+      //         sen->outs[0].trig.filtered_count++;
       //       }
       //     } else {
-      //       if((current_timestamp - sen->timestamp) > sen->min_period_us) {
+      //       if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
       //         // TODO: save data somwhere!
       //         detect_running = false;
-      //         sen->sen_outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
-      //         // sen->sen_outs[0].trig.level = !level;
-      //         ESP_LOGE(TAG, "%s detected something with duration: %u",sen->name, sen->sen_outs[0].trig.duration);
-      //         ESP_LOGE(TAG, "%s interrupt counts: %u",sen->name, sen->sen_outs[0].trig.filtered_count);
+      //         sen->outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
+      //         // sen->outs[0].trig.level = !level;
+      //         ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
+      //         ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);
       //       }
       //     }
       //   break;
@@ -153,33 +160,34 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
 
   memset(&dev->sen, 0, sizeof(sensor_t));
   sensor_init(&dev->sen,1);
-  strncpy(dev->sen.name, "PIR\0", 4); //TODO: change lib to receive name as argument
+  strncpy(dev->sen.info.name, "PIR\0", 4); //TODO: change lib to receive name as argument
   // dev->sen.id = sen_id;
-  dev->sen.lib_id = SEN_SW_LIB_ID;
-  dev->sen.sen_id = sen_id;
-  dev->sen.sen_lib_version = SWITCH_SEN_LIB_VERSION;
-  dev->sen.version = 1;
-  dev->sen.com_type = SEN_COM_TYPE_DIGITAL;
-  dev->sen.min_period_us = min_period_us;
-  dev->sen.delay_s_ms = 0;
-  dev->sen.out_nr = 1;
-  dev->sen.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
-  dev->sen.addr = 0;
-  dev->sen.period_ms=0;
+  dev->sen.info.lib_id = SEN_SW_LIB_ID;
+  dev->sen.info.sen_id = sen_id;
+  dev->sen.info.sen_lib_version = SWITCH_SEN_LIB_VERSION;
+  dev->sen.info.version = 1;
+  dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL;
+  dev->sen.conf.min_period_us = min_period_us;
+  dev->sen.info.delay_s_ms = 0;
+  dev->sen.info.out_nr = 1;
+  dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
+  dev->sen.conf.addr = 0;
+  dev->sen.conf.period_ms=0;
   dev->sen.get_data=NULL;
   dev->sen.dev=dev;
 
-  dev->sen.sen_status.initialized = false;
-  dev->sen.sen_status.fail_cnt = 0;
-  dev->sen.sen_status.fail_time = 0;
+  dev->sen.status.initialized = false;
+  dev->sen.status.fail_cnt = 0;
+  dev->sen.status.fail_time = 0;
 
-  dev->sen.sen_outs[0].out_id=0;
-  dev->sen.sen_outs[0].gpio = input_pin;
-  dev->sen.sen_outs[0].out_type = SEN_TYPE_SWITCH;
-  // dev->sen.sen_outs[0].sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
-  dev->sen.sen_outs[0].out_trigger_dir = trigger_dir;
-  dev->sen.sen_outs[0].out_val_type=SEN_OUT_VAL_TYPE_SEN_SWITCH;
-  dev->sen.sen_outs[0].trig.filtered_count=0;
+  dev->sen.outs[0].out_id=0;
+  dev->sen.outs[0].gpio = input_pin;
+  dev->sen.outs[0].out_type = SEN_TYPE_SWITCH;
+  // dev->sen.outs[0].sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
+  dev->sen.outs[0].out_trigger_dir = trigger_dir;
+  dev->sen.outs[0].out_val_type=SEN_OUT_VAL_TYPE_SEN_SWITCH;
+  // dev->sen.outs[0].trig.filtered_count=0;
+  dev->sen.outs[0].m_raw=0;
 
   gpio_config_t io_conf;
   io_conf.intr_type = GPIO_INTR_ANYEDGE;
@@ -204,13 +212,13 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   ret = gpio_isr_handler_add(input_pin, gpio_isr_handler, (void *) input_pin);
   // ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
   // if(ret != ESP_OK) return ret;
-  BaseType_t task_return = xTaskCreate(&sw_trigger_task, dev->sen.name, 2048, (void *) (&dev->sen), 3|portPRIVILEGE_BIT, &dev->sen.sen_outs[0].task_handle);
-  configASSERT(dev->sen.sen_outs[0].task_handle);
+  BaseType_t task_return = xTaskCreate(&sw_trigger_task, dev->sen.info.name, 2048, (void *) (&dev->sen), 3|portPRIVILEGE_BIT, &dev->sen.outs[0].task_handle);
+  configASSERT(dev->sen.outs[0].task_handle);
   if( task_return == pdPASS ) {
-    ESP_LOGI(TAG, "Sensor %s event trigger task is running.",dev->sen.name);
+    ESP_LOGI(TAG, "Sensor %s event trigger task is running.",dev->sen.info.name);
     ret = ESP_OK;
   }
-  dev->sen.sen_status.initialized = (ret==ESP_OK);
+  dev->sen.status.initialized = (ret==ESP_OK);
   return ret;
   // return ESP_OK;
 }

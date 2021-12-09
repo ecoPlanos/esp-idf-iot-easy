@@ -36,7 +36,7 @@ typedef struct {
   int rx_buffer_size;
   int tx_buffer_size;
   int queue_size;
-  QueueHandle_t *queue;
+  QueueHandle_t queue;
   int intr_alloc_flags;
 
   int tx_io_num;

@@ -43,6 +43,7 @@
 #include <stdbool.h>
 #include <esp_err.h>
 #include <i2cdev.h>
+#include <sensor_handler.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -137,6 +138,8 @@ typedef struct {
 
     i2c_dev_t i2c_dev;  //!< I2C device descriptor
     uint8_t   id;       //!< Chip ID
+
+    sensor_t sen;
 } bmp280_t;
 
 /**

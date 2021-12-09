@@ -55,7 +55,8 @@ extern "C" {
 
 #define SHT85_I2C_ADDRESS 0x44
 
-#define SHT85_RAW_DATA_SIZE 6*2
+#define SHT85_RAW_DATA_SIZE 6
+// #define SHT85_RAW_DATA_SIZE 6*2
 
 typedef enum
 {
@@ -70,14 +71,14 @@ typedef uint8_t sht85_raw_data_t[SHT85_RAW_DATA_SIZE];
  */
 typedef enum
 {
-    SHT85_HEATER_OFF = 0,      /**< Heater is off, default */
-    SHT85_HEATER_ON            /**< Heater is off, default */
-    // SHT85_HEATER_HIGH_LONG,    /**< High power (~200mW), 1 second pulse */
-    // SHT85_HEATER_HIGH_SHORT,   /**< High power (~200mW), 0.1 second pulse */
-    // SHT85_HEATER_MEDIUM_LONG,  /**< Medium power (~110mW), 1 second pulse */
-    // SHT85_HEATER_MEDIUM_SHORT, /**< Medium power (~110mW), 0.1 second pulse */
-    // SHT85_HEATER_LOW_LONG,     /**< Low power (~20mW), 1 second pulse */
-    // SHT85_HEATER_LOW_SHORT,    /**< Low power (~20mW), 0.1 second pulse */
+  SHT85_HEATER_OFF = 0,      /**< Heater is off, default */
+  SHT85_HEATER_ON            /**< Heater is off, default */
+  // SHT85_HEATER_HIGH_LONG,    /**< High power (~200mW), 1 second pulse */
+  // SHT85_HEATER_HIGH_SHORT,   /**< High power (~200mW), 0.1 second pulse */
+  // SHT85_HEATER_MEDIUM_LONG,  /**< Medium power (~110mW), 1 second pulse */
+  // SHT85_HEATER_MEDIUM_SHORT, /**< Medium power (~110mW), 0.1 second pulse */
+  // SHT85_HEATER_LOW_LONG,     /**< Low power (~20mW), 1 second pulse */
+  // SHT85_HEATER_LOW_SHORT,    /**< Low power (~20mW), 0.1 second pulse */
 } sht85_heater_t;
 
 /**
@@ -85,24 +86,77 @@ typedef enum
  */
 typedef enum
 {
-    SHT85_STATUS_ALERT_PENDING        =  0b0000000000000001,      /**< Alert pending status '0': no pending alerts '1': at least one pending alert */
-    SHT85_STATUS_HEATER               =  0b0000000000000100,      /**< Heater status ‘0’ : Heater OFF ‘1’ : Heater ON */
-    SHT85_STATUS_RH_TRACKING_ALERT    =  0b0000000000010000,      /**< RH tracking alert ‘0’ : no alert ‘1’ . alert */
-    SHT85_STATUS_T_TRACKING_ALERT     =  0b0000000000100000,      /**< T tracking alert ‘0’ : no alert ‘1’ . alert */
-    SHT85_STATUS_SYS_RESET_DETECTED   =  0b0000100000000000,      /**< System reset detected '0': no reset detected since last ‘clear status register’ command '1': reset detected (hard reset, soft reset command or supply fail)  */
-    SHT85_STATUS_COMMAND              =  0b0100000000000000,      /**< Command status '0': last command executed successfully '1': last command not processed. It was either invalid, failed the integrated command checksum */
-    SHT85_STATUS_WRITE_DATA_CHECKSUM  =  0b1000000000000000,      /**< Write data checksum status '0': checksum of last write transfer was correct '1': checksum of last write transfer failed */
+  SHT85_STATUS_ALERT_PENDING        =  0b0000000000000001,      /**< Alert pending status '0': no pending alerts '1': at least one pending alert */
+  SHT85_STATUS_HEATER               =  0b0000000000000100,      /**< Heater status ‘0’ : Heater OFF ‘1’ : Heater ON */
+  SHT85_STATUS_RH_TRACKING_ALERT    =  0b0000000000010000,      /**< RH tracking alert ‘0’ : no alert ‘1’ . alert */
+  SHT85_STATUS_T_TRACKING_ALERT     =  0b0000000000100000,      /**< T tracking alert ‘0’ : no alert ‘1’ . alert */
+  SHT85_STATUS_SYS_RESET_DETECTED   =  0b0000100000000000,      /**< System reset detected '0': no reset detected since last ‘clear status register’ command '1': reset detected (hard reset, soft reset command or supply fail)  */
+  SHT85_STATUS_COMMAND              =  0b0100000000000000,      /**< Command status '0': last command executed successfully '1': last command not processed. It was either invalid, failed the integrated command checksum */
+  SHT85_STATUS_WRITE_DATA_CHECKSUM  =  0b1000000000000000,      /**< Write data checksum status '0': checksum of last write transfer was correct '1': checksum of last write transfer failed */
 } sht85_status_t;
 
 /**
- * Possible repeatability modes
+ * Commands
  */
-typedef enum
-{
-    SHT85_HIGH = 0,
-    SHT85_MEDIUM,
-    SHT85_LOW
-} sht85_repeat_t;
+// typedef enum {
+//   CMD_READ_SERIALNBR = 0x3780, // read serial number
+//   CMD_READ_STATUS    = 0xF32D, // read status register
+//   CMD_CLEAR_STATUS   = 0x3041, // clear status register
+//   CMD_HEATER_ENABLE  = 0x306D, // enabled heater
+//   CMD_HEATER_DISABLE = 0x3066, // disable heater
+//   CMD_SOFT_RESET     = 0x30A2, // soft reset
+//   CMD_MEAS_SINGLE_H  = 0x2400, // single meas., high repeatability
+//   CMD_MEAS_SINGLE_M  = 0x240B, // single meas., medium repeatability
+//   CMD_MEAS_SINGLE_L  = 0x2416, // single meas., low repeatability
+//   CMD_MEAS_PERI_05_H = 0x2032, // periodic meas. 0.5 mps, high repeatability
+//   CMD_MEAS_PERI_05_M = 0x2024, // periodic meas. 0.5 mps, medium repeatability
+//   CMD_MEAS_PERI_05_L = 0x202F, // periodic meas. 0.5 mps, low repeatability
+//   CMD_MEAS_PERI_1_H  = 0x2130, // periodic meas. 1 mps, high repeatability
+//   CMD_MEAS_PERI_1_M  = 0x2126, // periodic meas. 1 mps, medium repeatability
+//   CMD_MEAS_PERI_1_L  = 0x212D, // periodic meas. 1 mps, low repeatability
+//   CMD_MEAS_PERI_2_H  = 0x2236, // periodic meas. 2 mps, high repeatability
+//   CMD_MEAS_PERI_2_M  = 0x2220, // periodic meas. 2 mps, medium repeatability
+//   CMD_MEAS_PERI_2_L  = 0x222B, // periodic meas. 2 mps, low repeatability
+//   CMD_MEAS_PERI_4_H  = 0x2334, // periodic meas. 4 mps, high repeatability
+//   CMD_MEAS_PERI_4_M  = 0x2322, // periodic meas. 4 mps, medium repeatability
+//   CMD_MEAS_PERI_4_L  = 0x2329, // periodic meas. 4 mps, low repeatability
+//   CMD_MEAS_PERI_10_H = 0x2737, // periodic meas. 10 mps, high repeatability
+//   CMD_MEAS_PERI_10_M = 0x2721, // periodic meas. 10 mps, medium repeatability
+//   CMD_MEAS_PERI_10_L = 0x272A, // periodic meas. 10 mps, low repeatability
+//   CMD_FETCH_DATA     = 0xE000, // readout measurements for periodic mode
+//   CMD_BREAK          = 0x3093, // stop periodic measurement
+// } sht85_commands_t;
+
+ /**
+  * Measure Modes
+  */
+typedef enum {
+  SINGLE_MEAS_LOW = 0, // low repeatability
+  SINGLE_MEAS_MEDIUM,  // medium repeatability
+  SINGLE_MEAS_HIGH     // high repeatability
+} sht85_measure_modes_t;
+
+
+/**
+ * Periodic Modes
+ */
+typedef enum {
+  PERI_MEAS_LOW_05_HZ = 0,
+  PERI_MEAS_LOW_1_HZ     ,
+  PERI_MEAS_LOW_2_HZ     ,
+  PERI_MEAS_LOW_4_HZ     ,
+  PERI_MEAS_LOW_10_HZ    ,
+  PERI_MEAS_MEDIUM_05_HZ ,
+  PERI_MEAS_MEDIUM_1_HZ  ,
+  PERI_MEAS_MEDIUM_2_HZ  ,
+  PERI_MEAS_MEDIUM_4_HZ  ,
+  PERI_MEAS_MEDIUM_10_HZ ,
+  PERI_MEAS_HIGH_05_HZ   ,
+  PERI_MEAS_HIGH_1_HZ    ,
+  PERI_MEAS_HIGH_2_HZ    ,
+  PERI_MEAS_HIGH_4_HZ    ,
+  PERI_MEAS_HIGH_10_HZ
+} sht85_periodic_modes_t;
 
 /**
  * Device info.
@@ -124,7 +178,7 @@ typedef struct
     uint32_t serial;              //!< device serial number
 
     sht85_heater_t heater;        //!< used measurement mode
-    sht85_repeat_t repeatability; //!< used repeatability
+    sht85_measure_modes_t repeatability; //!< used repeatability
 
     bool meas_started;            //!< indicates whether measurement started
     uint64_t meas_start_time;     //!< measurement start time in us
@@ -167,6 +221,13 @@ esp_err_t sht85_init(sht85_t *dev);
  * @return          `ESP_OK` on success
  */
 esp_err_t sht85_reset(sht85_t *dev);
+
+/**
+ * @brief Read sensor data and store it on the sensor handler structure
+ *
+ * @param dev Device descriptor
+ */
+esp_err_t sht85_iot_sen_measurement(void *dev);
 
 /**
  * @brief High level measurement function

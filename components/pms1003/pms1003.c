@@ -62,40 +62,36 @@ typedef enum {
   CMD_CHANGE_SLEEP =      0xe4
 } pms1003_commands_t;
 
-typedef enum {
-  STATE_READ_FRAME_LENGTH =             0x4d,  //Fame length=2x13+2(data+check bytes)
-  STATE_READ_PM1_0_CON_UNIT =           0x4d,  //DATA1
-  STATE_READ_PM2_5_CON_UNIT =           0x4d,  //DATA2
-  STATE_READ_PM10_CON_UNIT =            0x4d,  //DATA3
-  STATE_READ_PM1_0_CON_UNIT_ATMOSPHE =  0x4d,  //DATA4
-  STATE_READ_PM2_5_CON_UNIT_ATMOSPHE =  0x4d,  //DATA5
-  STATE_READ_CON_UNIT_ATMOSPHE =        0x4d,  //DATA6
-  STATE_READ_PARTICLE_NR_0_3_UM =       0x4d,  //DATA7
-  STATE_READ_PARTICLE_NR_0_5_UM =       0x4d,  //DATA8
-  STATE_READ_PARTICLE_NR_1_0_UM =       0x4d,  //DATA9
-  STATE_READ_PARTICLE_NR_2_5_UM =       0x4d,  //DATA10
-  STATE_READ_PARTICLE_NR_5_0_UM =       0x4d,  //DATA11
-  STATE_READ_PARTICLE_NR_10_UM =        0x4d,  //DATA12
-  STATE_READ_RESERVED =                 0x4d,  //DATA13
-  STATE_READ_CHECK =                    0x4d  //Check code = Start character 1 + Start character 2 + ... + data 13 Low 8 bits
+// typedef enum {
+//   STATE_READ_FRAME_LENGTH =             0x4d,  //Fame length=2x13+2(data+check bytes)
+//   STATE_READ_PM1_0_CON_UNIT =           0x4d,  //DATA1
+//   STATE_READ_PM2_5_CON_UNIT =           0x4d,  //DATA2
+//   STATE_READ_PM10_CON_UNIT =            0x4d,  //DATA3
+//   STATE_READ_PM1_0_CON_UNIT_ATMOSPHE =  0x4d,  //DATA4
+//   STATE_READ_PM2_5_CON_UNIT_ATMOSPHE =  0x4d,  //DATA5
+//   STATE_READ_CON_UNIT_ATMOSPHE =        0x4d,  //DATA6
+//   STATE_READ_PARTICLE_NR_0_3_UM =       0x4d,  //DATA7
+//   STATE_READ_PARTICLE_NR_0_5_UM =       0x4d,  //DATA8
+//   STATE_READ_PARTICLE_NR_1_0_UM =       0x4d,  //DATA9
+//   STATE_READ_PARTICLE_NR_2_5_UM =       0x4d,  //DATA10
+//   STATE_READ_PARTICLE_NR_5_0_UM =       0x4d,  //DATA11
+//   STATE_READ_PARTICLE_NR_10_UM =        0x4d,  //DATA12
+//   STATE_READ_RESERVED =                 0x4d,  //DATA13
+//   STATE_READ_CHECK =                    0x4d  //Check code = Start character 1 + Start character 2 + ... + data 13 Low 8 bits
+//
+// } pms1003_transport_protocol_active_state_t;
 
-} pms1003_transport_protocol_active_state_t;
-
-#define CHECK(x) do { esp_err_t __; if ((__ = x) != ESP_OK) return __; } while (0)
+#define CHECK(x) do { esp_err_t __; if ((__ = x) != ESP_OK) {ESP_ERROR_CHECK_WITHOUT_ABORT(__); return __;} } while (0)
 #define CHECK_ARG(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
-static esp_err_t check_code(uint16_t data[]) {
-    uint16_t sum = 0;
+static esp_err_t check_code(uint8_t data[], uint8_t len) {
+    uint16_t sum = len+START_BYTE_1+START_BYTE_2;
 
-    for (size_t i = 0; i < FRAME_LENGTH/2-1; i++) {
+    for (size_t i = 0; i < len-2; i++) {
       sum += data[i];
     }
-    ESP_LOGD(TAG, "CRC sum1: %u",sum);
-    sum += START_BYTE_1;
-    ESP_LOGD(TAG, "CRC sum2: %u",sum);
-    sum += START_BYTE_2;
-    ESP_LOGD(TAG, "CRC sum3: %u",sum);
-    if (data[FRAME_LENGTH/2] != sum) {
+    // ESP_LOGD(TAG, "CRC sum: %u",sum);
+    if (((data[len-2]<<8)|data[len-1]) != sum) {
         ESP_LOGE(TAG, "Invalid CRC");
         return ESP_ERR_INVALID_CRC;
     }
@@ -112,6 +108,7 @@ static inline esp_err_t get_meas_cmd(uint8_t cmd[]) {
   uint16_t check = cmd[0]+cmd[1]+cmd[2]+cmd[3]+cmd[4];
   cmd[5] = check>>8;
   cmd[6] = (check<<8)>>8;
+  ESP_LOGD(TAG, "Sum: %u check_MSB: %u check_LSB: %u", check,cmd[5],cmd[6]);
   return ESP_OK;
 }
 
@@ -127,6 +124,7 @@ static inline esp_err_t get_change_mode_cmd(uint8_t cmd[], pms1003_mode_type_t m
   cmd[6] = (check<<8)>>8;
   return ESP_OK;
 }
+
 static inline esp_err_t get_change_sleep_cmd(uint8_t cmd[], pms1003_sleep_type_t sleep) {
   if(!cmd) return ESP_ERR_INVALID_ARG;
   cmd[0] = START_BYTE_1;
@@ -143,43 +141,107 @@ static inline esp_err_t get_change_sleep_cmd(uint8_t cmd[], pms1003_sleep_type_t
 static inline esp_err_t send_cmd_nolock(pms1003_t *dev, uint8_t cmd[])
 {
     ESP_LOGD(TAG, "Sending cmd %02x %02x %02x %02x %02x %02x %02x...", cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], cmd[5], cmd[6]);
-    return uart_dev_write(&dev->uart_dev, cmd);
+    int wr_len = uart_write_bytes(dev->uart_dev.port, cmd, 7);
+    if(wr_len < 7) return ESP_FAIL;
+    return ESP_OK;
+    // return uart_dev_write(&dev->uart_dev, cmd);
 }
 
-static inline esp_err_t read_res_nolock(pms1003_t *dev, pms1003_raw_data_t *res)
-{
-    CHECK(uart_dev_read(&dev->uart_dev, NULL, 0, res, PMS1003_RAW_DATA_SIZE));
-
-    uint8_t *res8 = (uint8_t *)res;
-    // ESP_LOGD(TAG, "Got response %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x
-    //         %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-    //         res8[0], res8[1], res8[2], res8[3], res8[4], res8[5], res8[6], res8[7], res8[8], res8[9],
-    //         res8[10], res8[12], res8[13], res8[14], res8[15], res8[16], res8[17], res8[18], res8[19],
-    //         res8[20], res8[21], res8[22], res8[23], res8[24], res8[25], res8[26], res8[27]);
+static inline esp_err_t read_res_nolock(pms1003_t *dev, pms1003_raw_data_t *res) {
+  uint8_t res8[FRAME_LENGTH];
+  char c;
+  uint8_t start[2] = {0,0};
+  uint8_t frame_len = 0;
+  int read_len;
+  // bool start1 = false;
+  // int read_len = uart_read_bytes(dev->uart_dev.port, res8, PMS1003_RAW_DATA_SIZE, 800 / portTICK_PERIOD_MS);
+  // res[PMS1003_RAW_DATA_SIZE] = '\0';
+  // CHECK(uart_dev_read(&dev->uart_dev, NULL, 0, res8, PMS1003_TOTAL_DATA_SIZE));
+  while(uart_read_bytes(dev->uart_dev.port, &c, 1, pdMS_TO_TICKS(10))) {
+    start[1] = (c == START_BYTE_2);
+    if(start[1]&start[0]) {
+      read_len = uart_read_bytes(dev->uart_dev.port, &start, 2, pdMS_TO_TICKS(10));
+      if(read_len < 2) return ESP_FAIL;
+      frame_len = (start[0]<<8)|start[1];
+      if(frame_len == FRAME_LENGTH)
+        break;
+      else {
+        start[0] = 0;
+        start[1] = 0;
+        uart_read_bytes(dev->uart_dev.port, &c, 1, pdMS_TO_TICKS(10));
+      }
+    }
+    start[0] = (c == START_BYTE_1);
+  }
+  if(frame_len != FRAME_LENGTH) {
+    ESP_LOGE(TAG, "Couldn't find a message.");
+    return ESP_FAIL;
+  }
+  read_len = uart_read_bytes(dev->uart_dev.port, res8, FRAME_LENGTH, 1420 / portTICK_PERIOD_MS);
+  if(read_len < FRAME_LENGTH) {
+    ESP_LOGE(TAG,"Couldn't get all bytes! Got %u/%u expected.",read_len,FRAME_LENGTH);
+    return ESP_FAIL;
+  }
+  res->pm1_0_con_unit = (res8[0]<<8)|res8[1];
+  res->pm2_5_con_unit = (res8[2]<<8)|res8[3];
+  res->pm10_con_unit = (res8[4]<<8)|res8[5];
+  res->pm1_0_con_unit_atmosphe = (res8[6]<<8)|res8[7];
+  res->pm2_5_con_unit_atmosphe = (res8[8]<<8)|res8[9];
+  res->con_unit_atmosphe = (res8[10]<<8)|res8[11];
+  res->particle_nr_0_3_um = (res8[12]<<8)|res8[13];
+  res->particle_nr_0_5_um = (res8[14]<<8)|res8[15];
+  res->particle_nr_1_0_um = (res8[16]<<8)|res8[17];
+  res->particle_nr_2_5_um = (res8[18]<<8)|res8[19];
+  res->particle_nr_5_0_um = (res8[20]<<8)|res8[21];
+  res->particle_nr_10_um = (res8[22]<<8)|res8[23];
+  res->reserved = (res8[24]<<8)|res8[25];
+  res->check = (res8[26]<<8)|res8[27];
+  ESP_LOGD(TAG, "RES: %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u",
+          res->pm1_0_con_unit,
+          res->pm2_5_con_unit,
+          res->pm10_con_unit,
+          res->pm1_0_con_unit_atmosphe,
+          res->pm2_5_con_unit_atmosphe,
+          res->con_unit_atmosphe,
+          res->particle_nr_0_3_um,
+          res->particle_nr_0_5_um,
+          res->particle_nr_1_0_um,
+          res->particle_nr_2_5_um,
+          res->particle_nr_5_0_um,
+          res->particle_nr_10_um,
+          res->reserved,
+          res->check);
+  /*if(read_len == PMS1003_RAW_DATA_SIZE) {
+    ESP_LOGD(TAG, "Got response %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\
+             %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+             res8[0], res8[1], res8[2], res8[3], res8[4], res8[5], res8[6], res8[7], res8[8], res8[9],
+             res8[10], res8[12], res8[13], res8[14], res8[15], res8[16], res8[17], res8[18], res8[19],
+             res8[20], res8[21], res8[22], res8[23], res8[24], res8[25], res8[26], res8[27]);
     uint16_t *res16 = (uint16_t *)res;
-    // ESP_LOGD(TAG, "Got response %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x",
-    //         res16[0], res16[1], res16[2], res16[3], res16[4], res16[5], res16[6], res16[7], res16[8], res16[9], res16[10], res16[12], res16[13], res16[14]);
-    return check_code(res16);
+    ESP_LOGD(TAG, "Got response %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x",
+             res16[0], res16[1], res16[2], res16[3], res16[4], res16[5], res16[6], res16[7], res16[8], res16[9], res16[10], res16[12], res16[13], res16[14]);
+  }*/
+  // ESP_LOGW(TAG, "Didn't get enough data: %d/%u",read_len,PMS1003_RAW_DATA_SIZE);
+  return check_code(res8, FRAME_LENGTH);
+  // return ESP_FAIL;
 }
 
-static esp_err_t read_res(pms1003_t *dev, pms1003_raw_data_t *res)
-{
-    UART_DEV_TAKE_MUTEX(&dev->uart_dev);
-    UART_DEV_CHECK(&dev->uart_dev, read_res_nolock(dev, res));
-    UART_DEV_GIVE_MUTEX(&dev->uart_dev);
+static esp_err_t read_res(pms1003_t *dev, pms1003_raw_data_t *res) {
+  UART_DEV_TAKE_MUTEX(&dev->uart_dev);
+  UART_DEV_CHECK(&dev->uart_dev, read_res_nolock(dev, res));
+  UART_DEV_GIVE_MUTEX(&dev->uart_dev);
 
-    return ESP_OK;
+  return ESP_OK;
 }
 
-static esp_err_t exec_cmd(pms1003_t *dev, uint8_t cmd[], size_t delay_ticks)
-{
-    UART_DEV_TAKE_MUTEX(&dev->uart_dev);
-    UART_DEV_CHECK(&dev->uart_dev, send_cmd_nolock(dev, cmd));
-    if (delay_ticks)
-        vTaskDelay(delay_ticks);
-    UART_DEV_GIVE_MUTEX(&dev->uart_dev);
+static esp_err_t exec_cmd(pms1003_t *dev, uint8_t cmd[], size_t delay_ticks) {
+  UART_DEV_TAKE_MUTEX(&dev->uart_dev);
+  UART_DEV_CHECK(&dev->uart_dev, send_cmd_nolock(dev, cmd));
+  if (delay_ticks)
+      vTaskDelay(delay_ticks);
+  UART_DEV_GIVE_MUTEX(&dev->uart_dev);
 
-    return ESP_OK;
+  return ESP_OK;
 }
 
 static inline bool is_measuring(pms1003_t *dev)
@@ -190,7 +252,7 @@ static inline bool is_measuring(pms1003_t *dev)
 
     // not running if time elapsed is greater than duration
     uint64_t elapsed = esp_timer_get_time() - dev->meas_start_time;
-    return elapsed < dev->sen.min_period_us;
+    return elapsed < dev->sen.conf.min_period_us;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -218,73 +280,95 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
 
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,12);
-    strncpy(dev->sen.name, "PMS1003\0", 8);
-    dev->sen.lib_id = SEN_PMS1003_LIB_ID;
-    dev->sen.sen_id = sen_id;
-    dev->sen.version = 1;
-    dev->sen.com_type = SEN_COM_TYPE_DIGITAL_COM;
-    dev->sen.min_period_us = 0;
-    dev->sen.delay_s_ms = 0;
-    dev->sen.out_nr = 12;
-    dev->sen.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
-    dev->sen.period_ms=11001;
+    strncpy(dev->sen.info.name, "PMS1003\0", 8);
+    dev->sen.info.lib_id = SEN_PMS1003_LIB_ID;
+    dev->sen.info.sen_id = sen_id;
+    dev->sen.info.version = 1;
+    dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
+    dev->sen.conf.min_period_us = 0;
+    dev->sen.info.delay_s_ms = 0;
+    dev->sen.info.out_nr = 12;
+    dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+    dev->sen.conf.period_ms=11001;
+    dev->sen.get_data=pms1003_iot_sen_measurement;
+    dev->sen.dev=dev;
 
-    dev->sen.sen_status.fail_cnt = 0;
-    dev->sen.sen_status.fail_time = 0;
-    dev->sen.sen_status.initialized = false;
-    dev->sen.sen_status.delay_m_us = 0;
+    dev->sen.status.fail_cnt = 0;
+    dev->sen.status.fail_time = 0;
+    dev->sen.status.initialized = false;
+    dev->sen.status.delay_m_us = 0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ID;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ID;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_id=PMS1003_OUT_PM10_CON_UNIT_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_id=PMS1003_OUT_PM10_CON_UNIT_ID;
+    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_id=PMS1003_OUT_PM10_CON_UNIT_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_CON_UNIT_ATMOSPHE_ID;
+    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_CON_UNIT_ATMOSPHE_ID;
-    dev->sen.sen_outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_3_UM_ID;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_3_UM_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_5_UM_ID;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_5_UM_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_1_0_UM_ID;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_1_0_UM_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_2_5_UM_ID;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_2_5_UM_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_5_0_UM_ID;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].dust=0.0;
 
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_5_0_UM_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
-
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_10_UM_ID;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_type = SEN_TYPE_DUST;
-    dev->sen.sen_outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_10_UM_ID;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_type = SEN_TYPE_DUST;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].m_raw=0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].dust=0.0;
 
     return uart_dev_create_mutex(&dev->uart_dev);
 }
@@ -298,9 +382,40 @@ esp_err_t pms1003_free_desc(pms1003_t *dev)
 
 esp_err_t pms1003_init(pms1003_t *dev)
 {
-    CHECK_ARG(dev);
+  CHECK_ARG(dev);
 
-    return pms1003_reset(dev);
+  CHECK(uart_driver_install(dev->uart_dev.port, dev->uart_dev.rx_buffer_size, dev->uart_dev.tx_buffer_size, dev->uart_dev.queue_size, &dev->uart_dev.queue, dev->uart_dev.intr_alloc_flags));
+  CHECK(uart_param_config(dev->uart_dev.port, &dev->uart_dev.cfg));
+  CHECK(uart_set_pin(dev->uart_dev.port, dev->uart_dev.tx_io_num, dev->uart_dev.rx_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+  /* Set pattern interrupt, used to detect the end of a line */
+  // uart_enable_pattern_det_baud_intr(esp_gps->uart_port, 0x42, 1, 9, 0, 0);
+  /* Set pattern queue size */
+  // uart_pattern_queue_reset(dev->uart_dev.port, dev->uart_dev.event_queue_size);
+  uart_flush(dev->uart_dev.port);
+  /* Create Event loop */
+  // esp_event_loop_args_t loop_args = {
+  //     .queue_size = NMEA_EVENT_LOOP_QUEUE_SIZE,
+  //     .task_name = NULL
+  // };
+  // if (esp_event_loop_create(&loop_args, &esp_gps->event_loop_hdl) != ESP_OK) {
+  //     ESP_LOGE(GPS_TAG, "create event loop faild");
+  //     goto err_eloop;
+  // }
+  //
+  // uart_driver_install(dev->uart_dev.port, dev->uart_dev.rx_buffer_size, dev->uart_dev.tx_buffer_size, dev->uart_dev.queue_size, dev->uart_dev.queue, dev->uart_dev.intr_alloc_flags);
+  CHECK(pms1003_reset(dev));
+  uint8_t cmd[7];
+  CHECK(get_change_mode_cmd(cmd, PMS1003_MODE_PASSIVE));
+  CHECK(exec_cmd(dev,cmd,0));
+  vTaskDelay(pdMS_TO_TICKS(1420));
+  uart_flush(dev->uart_dev.port);
+  CHECK(pms1003_start_measurement(dev));
+  vTaskDelay(pdMS_TO_TICKS(1420));
+  pms1003_raw_data_t raw;
+  CHECK(pms1003_get_raw_data(dev, &raw));
+  dev->sen.status.initialized = true;
+  return ESP_OK;
 }
 
 esp_err_t pms1003_reset(pms1003_t *dev)
@@ -308,97 +423,108 @@ esp_err_t pms1003_reset(pms1003_t *dev)
     dev->meas_start_time = 0;
     dev->meas_started = false;
 
-    // CHECK(send_cmd(dev, CMD_RESET));
+    // TODO: reset sensot using GPIO
     vTaskDelay(1);
 
     return ESP_OK;
 }
 
-esp_err_t pms1003_measure(pms1003_t *dev, float *temperature, float *humidity)
-{
-    CHECK_ARG(dev && (temperature || humidity));
+esp_err_t pms1003_iot_sen_measurement(void *dev) {
+  // esp_err_t err;
+  pms1003_raw_data_t raw;
+  return pms1003_measure((pms1003_t *)dev, &raw);
+  // return tsl2591_get_lux((tsl2591_t*) dev,&lux);
+  // return ESP_OK;
+}
 
-    pms1003_raw_data_t raw;
+esp_err_t pms1003_measure(pms1003_t *dev, pms1003_raw_data_t *raw){
+    // CHECK_ARG(dev && (pm1_0_con_unit || pm2_5_con_unit || pm10_con_unit || pm1_0_con_unit_atmosphe || pm2_5_con_unit_atmosphe || con_unit_atmosphe || particle_nr_0_3_um || particle_nr_0_5_um || particle_nr_1_0_um || particle_nr_2_5_um || particle_nr_5_0_um || particle_nr_10_um));
+    CHECK_ARG(dev && raw);
+    // CHECK_ARG(dev);
+    pms1003_start_measurement(dev);
     uint8_t cmd[7];
-    if(get_meas_cmd(cmd) != ESP_OK) return ESP_FAIL;
+    CHECK(get_meas_cmd(cmd));
     CHECK(exec_cmd(dev,cmd, 0));
+    pms1003_get_raw_data(dev,raw);
 
-    return pms1003_compute_values(&raw, temperature, humidity);
+    return pms1003_compute_values(dev, &raw);
 }
 
-esp_err_t pms1003_start_measurement(pms1003_t *dev)
-{
-    CHECK_ARG(dev);
+esp_err_t pms1003_start_measurement(pms1003_t *dev) {
+  uint8_t cmd[7];
+  CHECK_ARG(dev);
 
-    if (is_measuring(dev))
-    {
-        ESP_LOGE(TAG, "Measurement is still running");
-        return ESP_ERR_INVALID_STATE;
-    }
-    uint8_t cmd[7];
-    uint16_t check = 0;
-    cmd[0] = START_BYTE_1;
-    cmd[1] = START_BYTE_2;
-    cmd[2] = CMD_READ_PASSIVE_MODE;
-    cmd[3] = 0;
-    cmd[4] = 0;
-    check = cmd[0]+cmd[1]+cmd[2]+cmd[3]+cmd[4];
-    cmd[5] = check>>8;
-    cmd[6] = (check<<8)>>8;
-    ESP_LOGD(TAG, "Sum: %u check_MSB: %u check_LSB: %u", check,cmd[5],cmd[6]);
-    UART_DEV_TAKE_MUTEX(&dev->uart_dev);
-    dev->meas_start_time = esp_timer_get_time();
-    dev->meas_started = true;
-    const int txBytes = uart_write_bytes(dev->uart_dev.port, cmd, 7);
-    UART_DEV_GIVE_MUTEX(&dev->uart_dev);
-    ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
-    if(txBytes<7) return ESP_FAIL;
+  if (is_measuring(dev)) {
+    ESP_LOGE(TAG, "Measurement is still running");
+    return ESP_ERR_INVALID_STATE;
+  }
+  CHECK(get_meas_cmd(cmd));
+  CHECK(exec_cmd(dev,cmd, 0));
+  // uint8_t cmd[7];
+  // uint16_t check = 0;
+  // cmd[0] = START_BYTE_1;
+  // cmd[1] = START_BYTE_2;
+  // cmd[2] = CMD_READ_PASSIVE_MODE;
+  // cmd[3] = 0;
+  // cmd[4] = 0;
+  // check = cmd[0]+cmd[1]+cmd[2]+cmd[3]+cmd[4];
+  // cmd[5] = check>>8;
+  // cmd[6] = (check<<8)>>8;
 
-    return ESP_OK;
+  // UART_DEV_TAKE_MUTEX(&dev->uart_dev);
+  // dev->meas_start_time = esp_timer_get_time();
+  // dev->meas_started = true;
+  // const int txBytes = uart_write_bytes(dev->uart_dev.port, cmd, 7);
+  // UART_DEV_GIVE_MUTEX(&dev->uart_dev);
+  // ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
+  // if(txBytes<7) return ESP_FAIL;
+
+  return ESP_OK;
 }
 
-size_t pms1003_get_measurement_duration(pms1003_t *dev)
-{
+size_t pms1003_get_measurement_duration(pms1003_t *dev) {
     if (!dev) return 0;
 
-    size_t res = pdMS_TO_TICKS(dev->sen.min_period_us/1000);
+    size_t res = pdMS_TO_TICKS(dev->sen.conf.min_period_us/1000);
     return res == 0 ? 1 : res;
 }
 
-esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw)
-{
+esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
     CHECK_ARG(dev);
     uint64_t timestamp;
     struct timeval tv;
     if (is_measuring(dev))
     {
-        ESP_LOGE(TAG, "Measurement is still running");
-        return ESP_ERR_INVALID_STATE;
+      ESP_LOGE(TAG, "Measurement is still running");
+      return ESP_ERR_INVALID_STATE;
     }
-    timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-    // dev->sen.sen_outs[BME680_OUT_TEMP_ID].measurement_raw = raw_data->temperature;
-    // dev->sen.sen_outs[BME680_OUT_TEMP_ID].timestamp = timestamp;
+    gettimeofday(&tv, NULL);
+
+    CHECK(read_res(dev, raw));
     dev->meas_started = false;
-    return read_res(dev, raw);
-}
+    dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;  //TODO: change timestamping using temporary variables and measurement delay calculation
 
-esp_err_t pms1003_compute_values(pms1003_raw_data_t *raw_data, float *temperature, float *humidity)
-{
-    // CHECK_ARG(raw_data && (temperature || humidity));
-    //
-    // if (temperature)
-    //     *temperature = ((uint16_t)raw_data[0] << 8 | raw_data[1]) * 175.0 / 65535.0 - 45.0;
-    //
-    // if (humidity)
-    //     *humidity = ((uint16_t)raw_data[3] << 8 | raw_data[4]) * 125.0 / 65535.0 - 6.0;
-
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw = raw->pm1_0_con_unit;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw = raw->pm2_5_con_unit;
+    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].m_raw = raw->pm10_con_unit;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].m_raw = raw->pm1_0_con_unit_atmosphe;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].m_raw = raw->pm2_5_con_unit_atmosphe;
+    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].m_raw = raw->con_unit_atmosphe;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].m_raw = raw->particle_nr_0_3_um;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].m_raw = raw->particle_nr_0_5_um;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].m_raw = raw->particle_nr_1_0_um;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].m_raw = raw->particle_nr_2_5_um;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].m_raw = raw->particle_nr_5_0_um;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].m_raw = raw->particle_nr_10_um;
     return ESP_OK;
 }
 
-esp_err_t pms1003_get_results(pms1003_t *dev, float *temperature, float *humidity)
-{
-    pms1003_raw_data_t raw;
-    CHECK(pms1003_get_raw_data(dev, &raw));
+esp_err_t pms1003_compute_values(pms1003_t *dev, pms1003_raw_data_t *raw_data) {
+  return ESP_OK;
+}
 
-    return pms1003_compute_values(&raw, temperature, humidity);
+esp_err_t pms1003_get_results(pms1003_t *dev) {
+  pms1003_raw_data_t raw;
+  CHECK(pms1003_get_raw_data(dev, &raw));
+  return pms1003_compute_values(dev, &raw);
 }

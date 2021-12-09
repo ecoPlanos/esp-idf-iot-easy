@@ -44,12 +44,13 @@
 #include <string.h>
 #include "sht85.h"
 
-#define I2C_FREQ_HZ 100000 // 100KHz
+#define I2C_FREQ_HZ 400000 // 100KHz
 
 static const char *TAG = "sht85";
 
 #define CMD_RESET             0x30A2
-#define CMD_SERIAL            0x3780
+// #define CMD_SERIAL            0x3780
+#define CMD_SERIAL            0x3682
 #define CMD_MEAS_REPEAT_HIGH  0x2400
 #define CMD_MEAS_REPEAT_MED   0x240b
 #define CMD_MEAS_REPEAT_LOW   0x2416
@@ -80,127 +81,110 @@ static const char *TAG = "sht85";
 #define CHECK(x) do { esp_err_t __; if ((__ = x) != ESP_OK) return __; } while (0)
 #define CHECK_ARG(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
-#define G_POLYNOM 0x31
+// #define G_POLYNOM 0x31
+#define G_POLYNOM 0x131
 
 static uint8_t crc8(uint8_t data[], size_t len)
 {
-    uint8_t crc = 0xff;
+  uint8_t crc = 0xff;
+  size_t i, j;
 
-    for (size_t i = 0; i < len; i++)
-    {
-        crc ^= data[i];
-        for (size_t i = 0; i < 8; i++)
-            crc = crc & 0x80 ? (crc << 1) ^ G_POLYNOM : crc << 1;
-    }
-    return crc;
+  for (i = 0; i < len; i++) {
+    crc ^= data[i];
+    for (j = 0; j < 8; j++)
+      crc = (crc & 0x80) ? ((crc << 1) ^ G_POLYNOM) : (crc << 1);
+  }
+  return crc;
 }
 
 static inline size_t get_duration_ms(sht85_t *dev)
 {
-    // switch (dev->heater)
-    // {
-    //     case SHT85_HEATER_HIGH_LONG:
-    //     case SHT85_HEATER_MEDIUM_LONG:
-    //     case SHT85_HEATER_LOW_LONG:
-    //         return 1100;
-    //     case SHT85_HEATER_HIGH_SHORT:
-    //     case SHT85_HEATER_MEDIUM_SHORT:
-    //     case SHT85_HEATER_LOW_SHORT:
-    //         return 110;
-    //     default:
-            switch (dev->repeatability)
-            {
-              case SHT85_HIGH:
-                  return 10;
-              case SHT85_MEDIUM:
-                  return 5;
-              default:
-                  return 2;
-            }
-    // }
+  switch (dev->repeatability) {
+    case SINGLE_MEAS_HIGH:
+      return 10;
+    case SINGLE_MEAS_MEDIUM:
+      return 5;
+    case SINGLE_MEAS_LOW:
+      return 2;
+    default:
+      ESP_LOGW(TAG, "Unknown repeatability value: %d", dev->repeatability);
+      return 2;
+  }
 }
 
-static inline uint8_t get_meas_cmd(sht85_t *dev) {
-    // switch (dev->heater)
-    // {
-    //     case SHT85_HEATER_HIGH_LONG:
-    //         return CMD_MEAS_H_HIGH_LONG;
-    //     case SHT85_HEATER_HIGH_SHORT:
-    //         return CMD_MEAS_H_HIGH_SHORT;
-    //     case SHT85_HEATER_MEDIUM_LONG:
-    //         return CMD_MEAS_H_MED_LONG;
-    //     case SHT85_HEATER_MEDIUM_SHORT:
-    //         return CMD_MEAS_H_MED_SHORT;
-    //     case SHT85_HEATER_LOW_LONG:
-    //         return CMD_MEAS_H_LOW_LONG;
-    //     case SHT85_HEATER_LOW_SHORT:
-    //         return CMD_MEAS_H_LOW_SHORT;
-    //     default:
-
-
-
-            switch (dev->repeatability) {
-                case SHT85_HIGH:
-                    return CMD_MEAS_REPEAT_HIGH;
-                case SHT85_MEDIUM:
-                    return CMD_MEAS_REPEAT_MED;
-                default:
-                    return CMD_MEAS_REPEAT_LOW;
-            }
-            // return CMD_MEAS_REPEAT_LOW;
-    // }
+static inline uint16_t get_meas_cmd(sht85_t *dev) {
+  switch (dev->repeatability) {
+    case SINGLE_MEAS_HIGH:
+      return CMD_MEAS_REPEAT_HIGH;
+    case SINGLE_MEAS_MEDIUM:
+      return CMD_MEAS_REPEAT_MED;
+    case SINGLE_MEAS_LOW:
+      return CMD_MEAS_REPEAT_LOW;
+    default:
+      ESP_LOGW(TAG, "Unknown repeatability value: %d", dev->repeatability);
+      return CMD_MEAS_REPEAT_LOW;
+  }
 }
 
 static inline esp_err_t send_cmd_nolock(sht85_t *dev, uint16_t cmd)
 {
-    ESP_LOGD(TAG, "Sending cmd %04x...", cmd);
-    return i2c_dev_write(&dev->i2c_dev, NULL, 0, &cmd, 1);
+  esp_err_t err=ESP_OK;
+  ESP_LOGD(TAG, "Sending cmd %04x...", cmd);
+  err=i2c_dev_write(&dev->i2c_dev, NULL, 0, &cmd, 1);
+  if(err != ESP_OK){
+    dev->sen.status.status_code=SEN_STATUS_FAIL_WRITE;
+    dev->sen.status.fail_reg=cmd;
+  }
+  return err;
 }
 
 static inline esp_err_t read_res_nolock(sht85_t *dev, sht85_raw_data_t res)
 {
-    CHECK(i2c_dev_read(&dev->i2c_dev, NULL, 0, res, SHT85_RAW_DATA_SIZE));
+  esp_err_t err=ESP_OK;
+  err=i2c_dev_read(&dev->i2c_dev, NULL, 0, res, SHT85_RAW_DATA_SIZE);
+  if(err != ESP_OK){
+    dev->sen.status.status_code=SEN_STATUS_FAIL_READ;
+  }
+  return err;
 
-    ESP_LOGD(TAG, "Got response %02x %02x %02x %02x %02x %02x",
-            res[0], res[1], res[2], res[3], res[4], res[5]);
+  ESP_LOGD(TAG, "Got response %02x %02x %02x %02x %02x %02x",
+          res[0], res[1], res[2], res[3], res[4], res[5]);
 
-    if (res[2] != crc8(res, 2) || res[5] != crc8(res + 3, 2))
-    {
-        ESP_LOGE(TAG, "Invalid CRC");
-        return ESP_ERR_INVALID_CRC;
-    }
+  if (res[2] != crc8(res, 2) || res[5] != crc8(res + 3, 2)) {
+    ESP_LOGE(TAG, "Invalid CRC");
+    return ESP_ERR_INVALID_CRC;
+  }
 
-    return ESP_OK;
+  return ESP_OK;
 }
 
-static esp_err_t send_cmd(sht85_t *dev, uint16_t cmd)
-{
-    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
-    I2C_DEV_CHECK(&dev->i2c_dev, send_cmd_nolock(dev, cmd));
-    I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+static esp_err_t send_cmd(sht85_t *dev, uint16_t cmd){
+  I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
+  I2C_DEV_CHECK(&dev->i2c_dev, send_cmd_nolock(dev, cmd));
+  I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-    return ESP_OK;
+  return ESP_OK;
 }
 
 static esp_err_t read_res(sht85_t *dev, sht85_raw_data_t res)
 {
-    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
-    I2C_DEV_CHECK(&dev->i2c_dev, read_res_nolock(dev, res));
-    I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+  I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
+  I2C_DEV_CHECK(&dev->i2c_dev, read_res_nolock(dev, res));
+  I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-    return ESP_OK;
+  return ESP_OK;
 }
 
 static esp_err_t exec_cmd(sht85_t *dev, uint16_t cmd, size_t delay_ticks, sht85_raw_data_t res)
 {
-    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
-    I2C_DEV_CHECK(&dev->i2c_dev, send_cmd_nolock(dev, cmd));
-    if (delay_ticks)
-        vTaskDelay(delay_ticks);
-    I2C_DEV_CHECK(&dev->i2c_dev, read_res_nolock(dev, res));
-    I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+  I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
+  I2C_DEV_CHECK(&dev->i2c_dev, send_cmd_nolock(dev, cmd));
+  if (delay_ticks)
+      vTaskDelay(delay_ticks);
+  I2C_DEV_CHECK(&dev->i2c_dev, read_res_nolock(dev, res));
+  I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-    return ESP_OK;
+  return ESP_OK;
 }
 
 static inline bool is_measuring(sht85_t *dev)
@@ -229,29 +213,35 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
 #endif
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,2);
-    strncpy(dev->sen.name, "SHT85\0", 6);
-    dev->sen.lib_id = SEN_SHT85_LIB_ID;
-    dev->sen.sen_id = sen_id;
-    dev->sen.version = 1;
-    dev->sen.com_type = SEN_COM_TYPE_DIGITAL_COM;
-    dev->sen.min_period_us = 0;
-    dev->sen.delay_s_ms = 0;
-    dev->sen.out_nr = 2; //temperature, RH
-    dev->sen.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
-    dev->sen.addr = SHT85_I2C_ADDRESS;
-    dev->sen.period_ms = 17420;
+    strncpy(dev->sen.info.name, "SHT85\0", 6);
+    dev->sen.info.lib_id = SEN_SHT85_LIB_ID;
+    dev->sen.info.sen_id = sen_id;
+    dev->sen.info.version = 1;
+    dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
+    dev->sen.conf.min_period_us = 0;
+    dev->sen.info.delay_s_ms = 0;
+    dev->sen.info.out_nr = 2; //temperature, RH
+    dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+    dev->sen.conf.addr = SHT85_I2C_ADDRESS;
+    dev->sen.conf.period_ms = 17420;
+    dev->sen.get_data=sht85_iot_sen_measurement;
+    dev->sen.dev=dev;
 
-    dev->sen.sen_status.initialized = false;
-    dev->sen.sen_status.fail_cnt = 0;
-    dev->sen.sen_status.fail_time = 0;
+    dev->sen.status.initialized = false;
+    dev->sen.status.fail_cnt = 0;
+    dev->sen.status.fail_time = 0;
 
-    dev->sen.sen_outs[SHT85_OUT_TEMP_ID].out_id=SHT85_OUT_TEMP_ID;
-    dev->sen.sen_outs[SHT85_OUT_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
-    dev->sen.sen_outs[SHT85_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+    dev->sen.outs[SHT85_OUT_TEMP_ID].out_id=SHT85_OUT_TEMP_ID;
+    dev->sen.outs[SHT85_OUT_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
+    dev->sen.outs[SHT85_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw=0;
+    dev->sen.outs[SHT85_OUT_TEMP_ID].temperature=0.0;
 
-    dev->sen.sen_outs[SHT85_OUT_RH_ID].out_id=SHT85_OUT_RH_ID;
-    dev->sen.sen_outs[SHT85_OUT_RH_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
-    dev->sen.sen_outs[SHT85_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+    dev->sen.outs[SHT85_OUT_RH_ID].out_id=SHT85_OUT_RH_ID;
+    dev->sen.outs[SHT85_OUT_RH_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
+    dev->sen.outs[SHT85_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[SHT85_OUT_RH_ID].m_raw=0;
+    dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity=0.0;
 
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
@@ -265,16 +255,28 @@ esp_err_t sht85_free_desc(sht85_t *dev)
 
 esp_err_t sht85_init(sht85_t *dev)
 {
-    CHECK_ARG(dev);
+  esp_err_t ret;
+  CHECK_ARG(dev);
 
-    dev->repeatability = SHT85_HIGH;
-    dev->heater = SHT85_HEATER_OFF;
+  dev->repeatability = SINGLE_MEAS_HIGH;
+  dev->heater = SHT85_HEATER_OFF;
 
-    sht85_raw_data_t s;
-    CHECK(exec_cmd(dev, CMD_SERIAL, pdMS_TO_TICKS(10), s));
-    dev->serial = ((uint32_t)s[0] << 24) | ((uint32_t)s[1] << 16) | ((uint32_t)s[3] << 8) | s[4];
-
-    return sht85_reset(dev);
+  sht85_raw_data_t s;
+  // CHECK(exec_cmd(dev, CMD_SERIAL, pdMS_TO_TICKS(10), s));
+  ret = exec_cmd(dev, CMD_SERIAL, pdMS_TO_TICKS(10), s);
+  if(ret != ESP_OK) {
+    ESP_LOGE(TAG, "Error sending command : %04x.", CMD_SERIAL);
+    return ret;
+  }
+  dev->serial = ((uint32_t)s[0] << 24) | ((uint32_t)s[1] << 16) | ((uint32_t)s[3] << 8) | s[4];
+  ret = sht85_reset(dev);
+  if(ret != ESP_OK) {
+    ESP_LOGE(TAG, "Error on reset.");
+    return ret;
+  }
+  dev->sen.status.initialized = true;
+  dev->sen.status.status_code = SEN_STATUS_OK;
+  return ESP_OK;
 }
 
 esp_err_t sht85_reset(sht85_t *dev)
@@ -288,14 +290,29 @@ esp_err_t sht85_reset(sht85_t *dev)
     return ESP_OK;
 }
 
+esp_err_t sht85_iot_sen_measurement(void *dev) {
+  float t,h;
+  sht85_measure((sht85_t *)dev, &t, &h);
+  // return tsl2591_get_lux((tsl2591_t*) dev,&lux);
+  return ESP_OK;
+}
+
 esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity)
 {
-    CHECK_ARG(dev && (temperature || humidity));
+  struct timeval tv;
+  CHECK_ARG(dev && (temperature || humidity));
 
-    sht85_raw_data_t raw;
-    CHECK(exec_cmd(dev, get_meas_cmd(dev), sht85_get_measurement_duration(dev), raw));
+  sht85_raw_data_t raw;
+  gettimeofday(&tv, NULL);
+  CHECK(exec_cmd(dev, get_meas_cmd(dev), sht85_get_measurement_duration(dev), raw));
+  CHECK(sht85_compute_values(raw, temperature, humidity));
+  dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw = (raw[0]<<8) | raw[1];
+  dev->sen.outs[SHT85_OUT_RH_ID].m_raw = (raw[3]<<8) | raw[4];
+  dev->sen.outs[SHT85_OUT_TEMP_ID].temperature = *temperature;
+  dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity = *humidity;
+  dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
 
-    return sht85_compute_values(raw, temperature, humidity);
+  return ESP_OK;
 }
 
 esp_err_t sht85_start_measurement(sht85_t *dev)

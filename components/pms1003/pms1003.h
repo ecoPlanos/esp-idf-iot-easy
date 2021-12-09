@@ -57,6 +57,7 @@ extern "C" {
 #define LIB_VERSION_PMS1003 "V1.0"
 
 #define PMS1003_RAW_DATA_SIZE 28
+#define PMS1003_TOTAL_DATA_SIZE 32
 
 #define PMS1003_BAUD_RATE_DEFAULT 9600  // Default serial setup: 9600bps Check bit：None Stop bit：1 bit
 
@@ -98,13 +99,13 @@ typedef struct {
  * Possible acquisition modes
  */
 typedef enum {
-  PMS1003_MODE_PASSIVE = false,    /**Passive mode */
-  PMS1003_MODE_ACTIVE = true       /**Active mode */
+  PMS1003_MODE_PASSIVE = 0,    /**Passive mode */
+  PMS1003_MODE_ACTIVE = 1       /**Active mode */
 }pms1003_mode_type_t;
 
 typedef enum {
-  PMS1003_SLEEP = false,     /**Passive mode */
-  PMS1003_AWAKE = true       /**Active mode */
+  PMS1003_SLEEP = 0,     /**Passive mode */
+  PMS1003_AWAKE = 1       /**Active mode */
 }pms1003_sleep_type_t;
 
 typedef struct {
@@ -171,6 +172,10 @@ esp_err_t pms1003_init(pms1003_t *dev);
  */
 esp_err_t pms1003_reset(pms1003_t *dev);
 
+esp_err_t pms1003_iot_sen_measurement(void *dev);
+
+esp_err_t pms1003_measure(pms1003_t *dev, pms1003_raw_data_t *raw);
+
 /**
  * @brief High level measurement function
  *
@@ -178,11 +183,8 @@ esp_err_t pms1003_reset(pms1003_t *dev);
  * one measurement in only one function:
  *
  * 1. Starts a measurement
- * 2. Waits using `vTaskDelay()` until measurement results are available
- * 3. Returns the results in kind of floating point sensor values
- *
- * This function is the easiest way to use the sensor. It is most suitable
- * for users that don't want to have the control on sensor details.
+ * 2. Waits until measurement results are available
+ * 3. Returns the results
  *
  * @note The function delays the calling task up to 1.1 s to wait for
  *       the measurement results. This might lead to problems when the function
@@ -193,7 +195,7 @@ esp_err_t pms1003_reset(pms1003_t *dev);
  * @param humidity    Humidity in percent
  * @return            `ESP_OK` on success
  */
-esp_err_t pms1003_measure(pms1003_t *dev, float *temperature, float *humidity);
+esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw);
 
 /**
  * @brief Start the measurement.
@@ -246,7 +248,7 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw);
  * @param[out] humidity    Humidity in percent
  * @return                 `ESP_OK` on success
  */
-esp_err_t pms1003_compute_values(pms1003_raw_data_t *raw_data, float *temperature, float *humidity);
+esp_err_t pms1003_compute_values(pms1003_t *dev,pms1003_raw_data_t *raw_data);
 
 /**
  * @brief Get measurement results in form of sensor values
@@ -257,11 +259,9 @@ esp_err_t pms1003_compute_values(pms1003_raw_data_t *raw_data, float *temperatur
  * In case that there are no results that can be read, the function fails.
  *
  * @param dev              Device descriptor
- * @param[out] temperature Temperature in degree Celsius
- * @param[out] humidity    Humidity in percent
  * @return                 `ESP_OK` on success
  */
-esp_err_t pms1003_get_results(pms1003_t *dev, float *temperature, float *humidity);
+esp_err_t pms1003_get_results(pms1003_t *dev);
 
 #ifdef __cplusplus
 }

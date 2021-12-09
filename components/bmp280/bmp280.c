@@ -76,19 +76,30 @@ static const char *TAG = "bmp280";
         } \
     } while (0)
 
-static esp_err_t read_register16(i2c_dev_t *dev, uint8_t reg, uint16_t *r)
+static esp_err_t read_register16(bmp280_t *dev, uint8_t reg, uint16_t *r)
 {
     uint8_t d[] = { 0, 0 };
+    esp_err_t err=ESP_OK;
 
-    CHECK(i2c_dev_read_reg(dev, reg, d, 2));
+    err=i2c_dev_read_reg(&dev->i2c_dev, reg, d, 2);
+    if(err != ESP_OK){
+      dev->sen.status.status_code=SEN_STATUS_FAIL_READ;
+      dev->sen.status.fail_reg=reg;
+    }
     *r = d[0] | (d[1] << 8);
 
-    return ESP_OK;
+    return err;
 }
 
-inline static esp_err_t write_register8(i2c_dev_t *dev, uint8_t addr, uint8_t value)
+inline static esp_err_t write_register8(bmp280_t *dev, uint8_t addr, uint8_t value)
 {
-    return i2c_dev_write_reg(dev, addr, &value, 1);
+  esp_err_t err=ESP_OK;
+  err=i2c_dev_write_reg(&dev->i2c_dev, addr, &value, 1);
+  if(err != ESP_OK){
+    dev->sen.status.status_code=SEN_STATUS_FAIL_WRITE;
+    dev->sen.status.fail_reg=addr;
+  }
+  return err;
 }
 
 static esp_err_t read_calibration_data(bmp280_t *dev)
@@ -199,6 +210,8 @@ esp_err_t bmp280_init(bmp280_t *dev, bmp280_params_t *params)
 
     if (dev->id != BMP280_CHIP_ID && dev->id != BME280_CHIP_ID)
     {
+        dev->sen.status.initialized=false;
+        dev->sen.status.status_code=SEN_STATUS_FAIL_INIT;
         CHECK_LOGE(dev, ESP_ERR_INVALID_VERSION,
                 "Invalid chip ID: expected: 0x%x (BME280) or 0x%x (BMP280) got: 0x%x",
                 BME280_CHIP_ID, BMP280_CHIP_ID, dev->id);
