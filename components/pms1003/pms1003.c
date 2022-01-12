@@ -303,72 +303,84 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ID;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_id=PMS1003_OUT_PM10_CON_UNIT_ID;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_3_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_5_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_1_0_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_2_5_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_5_0_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_10_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_type = SEN_TYPE_DUST;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].dust=0.0;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].srate = 0;
 
     return uart_dev_create_mutex(&dev->uart_dev);
 }

@@ -278,6 +278,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.outs[TSL2591_OUT_CH0_ID].bit_nr=16;
     dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw=0;
     dev->sen.outs[TSL2591_OUT_CH0_ID].light=0.0;
+    dev->sen.outs[TSL2591_OUT_CH0_ID].srate=0;
     // dev->sen.outs[TSL2591_OUT_CH0_ID].timestamp=0;
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc, SEN_AGC_TYPE_GAIN, TSL2591_GAINS_NR, gains, gains_max_values,gains_min_values,gains_th_h,gains_th_l));
     dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.state = true;
@@ -290,6 +291,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.outs[TSL2591_OUT_CH1_ID].bit_nr=16;
     dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw=0;
     dev->sen.outs[TSL2591_OUT_CH1_ID].light=0.0;
+    dev->sen.outs[TSL2591_OUT_CH1_ID].srate=0;
     // dev->sen.outs[TSL2591_OUT_CH1_ID].timestamp=0;
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc, SEN_AGC_TYPE_GAIN,TSL2591_GAINS_NR, gains, gains_max_values,gains_min_values,gains_th_h,gains_th_l));
     dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc.state = true;
