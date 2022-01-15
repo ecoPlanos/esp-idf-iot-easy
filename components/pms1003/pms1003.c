@@ -289,7 +289,7 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->sen.info.delay_s_ms = 0;
     dev->sen.info.out_nr = 12;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
-    dev->sen.conf.period_ms=11001;
+    dev->sen.conf.period_ms=nearest_prime(11001);
     dev->sen.get_data=pms1003_iot_sen_measurement;
     dev->sen.dev=dev;
 

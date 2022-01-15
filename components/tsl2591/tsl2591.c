@@ -263,7 +263,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.addr = TSL2591_I2C_ADDR;
     dev->sen.timestamp=0;
-    dev->sen.conf.period_ms=5420;
+    dev->sen.conf.period_ms=nearest_prime(5420);
     dev->sen.get_data=tsl2591_iot_sen_measurement;
     dev->sen.dev=dev;
 
