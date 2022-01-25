@@ -61,7 +61,7 @@ static void sw_trigger_task(void* arg) {
     if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
       gettimeofday(&now,NULL);
       level = gpio_get_level(sen->outs[0].gpio);
-      ESP_LOGI(TAG, "Sensor %s (GPIO_%u) interrupt, val: %d\n", sen->info.name, io_num, level);
+      // ESP_LOGD(TAG, "Sensor %s (GPIO_%u) interrupt, val: %d\n", sen->info.name, io_num, level);
       current_timestamp = (now.tv_sec * 1000000LL + now.tv_usec);
 
       if((sen->outs[0].out_trigger_dir == SEN_OUT_TRIGGER_FE) ^ level) {
@@ -71,7 +71,7 @@ static void sw_trigger_task(void* arg) {
           if(detect_running) current_filter_cnt++;  //TODO: check if counter is correct!
           else {
             detect_running = true;
-            ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->info.name);
+            ESP_LOGI(TAG, "Switch type sensor %s detected something...",sen->info.name);
             // sen->timestamp = current_timestamp;
             current_trig = current_timestamp;
             // sen->outs[0].trig.filtered_count = 0;
@@ -90,8 +90,8 @@ static void sw_trigger_task(void* arg) {
           sen->timestamp = current_trig;
           // ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
           // ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);
-          ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].m_raw);
-          ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig_cnt);
+          ESP_LOGI(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].m_raw);
+          ESP_LOGI(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig_cnt);
         }
       }
 
@@ -235,3 +235,4 @@ esp_err_t switch_sen_get_val(switch_sen_t *dev) {
 //   //TODO: get latest sensor data
 //   return ESP_OK;
 // }
+
