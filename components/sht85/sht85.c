@@ -200,8 +200,7 @@ static inline bool is_measuring(sht85_t *dev)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id)
-{
+esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id) {
     CHECK_ARG(dev);
 
     dev->i2c_dev.port = port;
@@ -223,7 +222,7 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.info.out_nr = 2; //temperature, RH
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.addr = SHT85_I2C_ADDRESS;
-    dev->sen.conf.period_ms = nearest_prime(17420);
+    dev->sen.conf.period_ms = nearest_prime(CONFIG_SHT85_DEFAULT_PERIOD_MS);
     dev->sen.get_data=sht85_iot_sen_measurement;
     dev->sen.dev=dev;
 
@@ -246,15 +245,13 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
 
-esp_err_t sht85_free_desc(sht85_t *dev)
-{
+esp_err_t sht85_free_desc(sht85_t *dev) {
     CHECK_ARG(dev);
 
     return i2c_dev_delete_mutex(&dev->i2c_dev);
 }
 
-esp_err_t sht85_init(sht85_t *dev)
-{
+esp_err_t sht85_init(sht85_t *dev) {
   esp_err_t ret;
   CHECK_ARG(dev);
 
@@ -279,8 +276,7 @@ esp_err_t sht85_init(sht85_t *dev)
   return ESP_OK;
 }
 
-esp_err_t sht85_reset(sht85_t *dev)
-{
+esp_err_t sht85_reset(sht85_t *dev) {
     dev->meas_start_time = 0;
     dev->meas_started = false;
 
@@ -297,8 +293,7 @@ esp_err_t sht85_iot_sen_measurement(void *dev) {
   return ESP_OK;
 }
 
-esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity)
-{
+esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity) {
   struct timeval tv;
   CHECK_ARG(dev && (temperature || humidity));
 
@@ -315,8 +310,7 @@ esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity)
   return ESP_OK;
 }
 
-esp_err_t sht85_start_measurement(sht85_t *dev)
-{
+esp_err_t sht85_start_measurement(sht85_t *dev) {
     CHECK_ARG(dev);
 
     if (is_measuring(dev))
@@ -332,16 +326,14 @@ esp_err_t sht85_start_measurement(sht85_t *dev)
     return ESP_OK;
 }
 
-size_t sht85_get_measurement_duration(sht85_t *dev)
-{
+size_t sht85_get_measurement_duration(sht85_t *dev) {
     if (!dev) return 0;
 
     size_t res = pdMS_TO_TICKS(get_duration_ms(dev));
     return res == 0 ? 1 : res;
 }
 
-esp_err_t sht85_get_raw_data(sht85_t *dev, sht85_raw_data_t raw)
-{
+esp_err_t sht85_get_raw_data(sht85_t *dev, sht85_raw_data_t raw) {
     CHECK_ARG(dev);
     time_t  timestamp;
     struct timeval tv;
@@ -355,8 +347,7 @@ esp_err_t sht85_get_raw_data(sht85_t *dev, sht85_raw_data_t raw)
     return read_res(dev, raw);
 }
 
-esp_err_t sht85_compute_values(sht85_raw_data_t raw_data, float *temperature, float *humidity)
-{
+esp_err_t sht85_compute_values(sht85_raw_data_t raw_data, float *temperature, float *humidity) {
     CHECK_ARG(raw_data && (temperature || humidity));
 
     if (temperature)
@@ -368,8 +359,7 @@ esp_err_t sht85_compute_values(sht85_raw_data_t raw_data, float *temperature, fl
     return ESP_OK;
 }
 
-esp_err_t sht85_get_results(sht85_t *dev, float *temperature, float *humidity)
-{
+esp_err_t sht85_get_results(sht85_t *dev, float *temperature, float *humidity) {
     sht85_raw_data_t raw;
     CHECK(sht85_get_raw_data(dev, raw));
 

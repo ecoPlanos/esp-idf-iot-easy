@@ -99,20 +99,19 @@ typedef struct {
  * Possible acquisition modes
  */
 typedef enum {
-  PMS1003_MODE_PASSIVE = 0,    /**Passive mode */
-  PMS1003_MODE_ACTIVE = 1       /**Active mode */
+  PMS1003_DATA_MODE_PASSIVE = 0,    /**Passive mode */
+  PMS1003_DATA_MODE_ACTIVE = 1       /**Active mode */
 }pms1003_mode_type_t;
 
 typedef enum {
-  PMS1003_SLEEP = 0,     /**Passive mode */
-  PMS1003_AWAKE = 1       /**Active mode */
+  PMS1003_SLEEP_MODE_SLEEP = 0,     /**Passive mode */
+  PMS1003_SLEEP_MODE_AWAKE = 1       /**Active mode */
 }pms1003_sleep_type_t;
 
 typedef struct {
   pms1003_mode_type_t mode;
-  pms1003_sleep_type_t awake;
+  pms1003_sleep_type_t sleep_mode;
 } pms1003_status_t;
-
 
 /**
  * Device info.
@@ -120,8 +119,14 @@ typedef struct {
 typedef struct {
   uint8_t pack_id;    // Package Identification
   uint8_t dev_id;     // Device Identification
-  pms1003_status_t status;
 } pms1003_inf_t;
+
+/**
+ * Device config.
+ */
+typedef struct {
+  uint32_t delay_after_awake;    // Package Identification
+} pms1003_conf_t;
 
 /**
  * Device descriptor
@@ -133,6 +138,8 @@ typedef struct {
   bool meas_started;            //!< indicates whether measurement started
   uint64_t meas_start_time;     //!< measurement start time in us
   pms1003_inf_t info;
+  pms1003_status_t status;
+  pms1003_conf_t conf;
   sensor_t sen;
 } pms1003_t;
 
@@ -204,6 +211,9 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw);
  * @return          `ESP_OK` on success
  */
 esp_err_t pms1003_start_measurement(pms1003_t *dev);
+
+esp_err_t pms1003_set_data_mode(pms1003_t *dev, pms1003_mode_type_t data_mode);
+esp_err_t pms1003_set_sleep_mode(pms1003_t *dev, pms1003_sleep_type_t sleep_mode);
 
 /**
  * @brief Get the duration of a measurement in RTOS ticks.

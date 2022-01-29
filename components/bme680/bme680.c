@@ -602,7 +602,7 @@ dev->sen.info.delay_s_ms = 0;
 dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
 dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
 dev->sen.conf.addr = BME680_I2C_ADDR_0;
-dev->sen.conf.period_ms=nearest_prime(2420);
+dev->sen.conf.period_ms=nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS);
 dev->sen.get_data=bme680_iot_sen_measurement;
 dev->sen.dev=dev;
 
