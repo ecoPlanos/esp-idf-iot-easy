@@ -299,12 +299,13 @@ esp_err_t sht85_get_raw_data(sht85_t *dev, sht85_raw_data_t raw);
 /**
  * @brief Computes sensor values from raw data
  *
+ * @param dev              SHT85 device descriptor
  * @param raw_data         Byte array that contains raw data
  * @param[out] temperature Temperature in degree Celsius
  * @param[out] humidity    Humidity in percent
  * @return                 `ESP_OK` on success
  */
-esp_err_t sht85_compute_values(sht85_raw_data_t raw_data, float *temperature, float *humidity);
+esp_err_t sht85_compute_values(sht85_t *dev, sht85_raw_data_t raw_data, float *temperature, float *humidity);
 
 /**
  * @brief Get measurement results in form of sensor values
@@ -320,6 +321,54 @@ esp_err_t sht85_compute_values(sht85_raw_data_t raw_data, float *temperature, fl
  * @return                 `ESP_OK` on success
  */
 esp_err_t sht85_get_results(sht85_t *dev, float *temperature, float *humidity);
+
+/**
+ * @brief Start a new measurement
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t sht85_iot_sen_start_measurement(void *dev);
+
+/**
+ * @brief Get last measurement data
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t sht85_iot_sen_get_data(void *dev);
+
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t sht85_iot_sen_sleep_mode_awake(void *dev);
+
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t sht85_iot_sen_sleep_mode_sleep(void *dev);
+
+/**
+ * @brief Reset sensor
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t sht85_iot_sen_reset(void *dev);
+
+/**
+ * @brief Reinitialize sensor
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t sht85_iot_sen_reinit(void *dev);
 
 #ifdef __cplusplus
 }

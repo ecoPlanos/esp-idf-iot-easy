@@ -379,14 +379,6 @@ esp_err_t bme680_measure_fixed(bme680_t *dev, bme680_values_fixed_t *results);
 esp_err_t bme680_measure_float(bme680_t *dev, bme680_values_float_t *results);
 
 /**
- * @brief   Get sensor data and store it on the sensor handler structure
- *
- * @param dev Device descriptor
- * @return `ESP_OK` on success
- */
-esp_err_t bme680_iot_sen_measurement(void *dev);
-
-/**
  * @brief   Set the oversampling rates for measurements
  *
  * The BME680 sensor allows to define individual oversampling rates for
@@ -490,6 +482,53 @@ esp_err_t bme680_use_heater_profile(bme680_t *dev, int8_t profile);
  * @return `ESP_OK` on success
  */
 esp_err_t bme680_set_ambient_temperature(bme680_t *dev, int16_t temperature);
+
+/**
+ * @brief Start a new measurement
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t bme680_iot_sen_start_measurement(void *dev);
+
+/**
+ * @brief Get last measurement data
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t bme680_iot_sen_get_data(void *dev);
+
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t bme680_iot_sen_sleep_mode_awake(void *dev);
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t bme680_iot_sen_sleep_mode_sleep(void *dev);
+
+/**
+ * @brief Reset sensor
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t bme680_iot_sen_reset(void *dev);
+
+/**
+ * @brief Reinitialize sensor
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t bme680_iot_sen_reinit(void *dev);
 
 #ifdef __cplusplus
 }

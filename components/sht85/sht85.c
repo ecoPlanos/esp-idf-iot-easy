@@ -84,8 +84,7 @@ static const char *TAG = "sht85";
 // #define G_POLYNOM 0x31
 #define G_POLYNOM 0x131
 
-static uint8_t crc8(uint8_t data[], size_t len)
-{
+static uint8_t crc8(uint8_t data[], size_t len) {
   uint8_t crc = 0xff;
   size_t i, j;
 
@@ -97,8 +96,7 @@ static uint8_t crc8(uint8_t data[], size_t len)
   return crc;
 }
 
-static inline size_t get_duration_ms(sht85_t *dev)
-{
+static inline size_t get_duration_ms(sht85_t *dev) {
   switch (dev->repeatability) {
     case SINGLE_MEAS_HIGH:
       return 10;
@@ -126,8 +124,7 @@ static inline uint16_t get_meas_cmd(sht85_t *dev) {
   }
 }
 
-static inline esp_err_t send_cmd_nolock(sht85_t *dev, uint16_t cmd)
-{
+static inline esp_err_t send_cmd_nolock(sht85_t *dev, uint16_t cmd) {
   esp_err_t err=ESP_OK;
   ESP_LOGD(TAG, "Sending cmd %04x...", cmd);
   err=i2c_dev_write(&dev->i2c_dev, NULL, 0, &cmd, 1);
@@ -138,8 +135,7 @@ static inline esp_err_t send_cmd_nolock(sht85_t *dev, uint16_t cmd)
   return err;
 }
 
-static inline esp_err_t read_res_nolock(sht85_t *dev, sht85_raw_data_t res)
-{
+static inline esp_err_t read_res_nolock(sht85_t *dev, sht85_raw_data_t res) {
   esp_err_t err=ESP_OK;
   err=i2c_dev_read(&dev->i2c_dev, NULL, 0, res, SHT85_RAW_DATA_SIZE);
   if(err != ESP_OK){
@@ -158,7 +154,7 @@ static inline esp_err_t read_res_nolock(sht85_t *dev, sht85_raw_data_t res)
   return ESP_OK;
 }
 
-static esp_err_t send_cmd(sht85_t *dev, uint16_t cmd){
+static esp_err_t send_cmd(sht85_t *dev, uint16_t cmd) {
   I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
   I2C_DEV_CHECK(&dev->i2c_dev, send_cmd_nolock(dev, cmd));
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
@@ -166,8 +162,7 @@ static esp_err_t send_cmd(sht85_t *dev, uint16_t cmd){
   return ESP_OK;
 }
 
-static esp_err_t read_res(sht85_t *dev, sht85_raw_data_t res)
-{
+static esp_err_t read_res(sht85_t *dev, sht85_raw_data_t res) {
   I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
   I2C_DEV_CHECK(&dev->i2c_dev, read_res_nolock(dev, res));
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
@@ -175,8 +170,7 @@ static esp_err_t read_res(sht85_t *dev, sht85_raw_data_t res)
   return ESP_OK;
 }
 
-static esp_err_t exec_cmd(sht85_t *dev, uint16_t cmd, size_t delay_ticks, sht85_raw_data_t res)
-{
+static esp_err_t exec_cmd(sht85_t *dev, uint16_t cmd, size_t delay_ticks, sht85_raw_data_t res) {
   I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
   I2C_DEV_CHECK(&dev->i2c_dev, send_cmd_nolock(dev, cmd));
   if (delay_ticks)
@@ -187,8 +181,7 @@ static esp_err_t exec_cmd(sht85_t *dev, uint16_t cmd, size_t delay_ticks, sht85_
   return ESP_OK;
 }
 
-static inline bool is_measuring(sht85_t *dev)
-{
+static inline bool is_measuring(sht85_t *dev) {
     // not running if measurement is not started
     if (!dev->meas_started)
       return false;
@@ -218,13 +211,18 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 0;
-    dev->sen.info.delay_s_ms = 0;
+    dev->sen.status.delay_start_get_ms = 0;
     dev->sen.info.out_nr = 2; //temperature, RH
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.addr = SHT85_I2C_ADDRESS;
     dev->sen.conf.period_ms = nearest_prime(CONFIG_SHT85_DEFAULT_PERIOD_MS);
-    dev->sen.get_data=sht85_iot_sen_measurement;
     dev->sen.dev=dev;
+    dev->sen.reset=sht85_iot_sen_reset;
+    dev->sen.reinit=sht85_iot_sen_reinit;
+    dev->sen.start_measurement=sht85_iot_sen_start_measurement;
+    dev->sen.get_data=sht85_iot_sen_get_data;
+    dev->sen.awake=sht85_iot_sen_sleep_mode_awake;
+    dev->sen.sleep=sht85_iot_sen_sleep_mode_sleep;
 
     dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
@@ -235,12 +233,14 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.outs[SHT85_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw=0;
     dev->sen.outs[SHT85_OUT_TEMP_ID].temperature=0.0;
+    dev->sen.outs[SHT85_OUT_TEMP_ID].srate=0;
 
     dev->sen.outs[SHT85_OUT_RH_ID].out_id=SHT85_OUT_RH_ID;
     dev->sen.outs[SHT85_OUT_RH_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
     dev->sen.outs[SHT85_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[SHT85_OUT_RH_ID].m_raw=0;
     dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity=0.0;
+    dev->sen.outs[SHT85_OUT_RH_ID].srate=0;
 
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
@@ -257,6 +257,8 @@ esp_err_t sht85_init(sht85_t *dev) {
 
   dev->repeatability = SINGLE_MEAS_HIGH;
   dev->heater = SHT85_HEATER_OFF;
+  // dev->sen.conf.delay_after_awake_ms=get_duration_ms(dev);
+  dev->sen.status.delay_start_get_ms=get_duration_ms(dev);
 
   sht85_raw_data_t s;
   // CHECK(exec_cmd(dev, CMD_SERIAL, pdMS_TO_TICKS(10), s));
@@ -289,7 +291,7 @@ esp_err_t sht85_reset(sht85_t *dev) {
 esp_err_t sht85_iot_sen_measurement(void *dev) {
   float t,h;
   sht85_measure((sht85_t *)dev, &t, &h);
-  // return tsl2591_get_lux((tsl2591_t*) dev,&lux);
+  // return sht85_get_lux((sht85_t*) dev,&lux);
   return ESP_OK;
 }
 
@@ -300,13 +302,16 @@ esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity) {
   sht85_raw_data_t raw;
   gettimeofday(&tv, NULL);
   CHECK(exec_cmd(dev, get_meas_cmd(dev), sht85_get_measurement_duration(dev), raw));
-  CHECK(sht85_compute_values(raw, temperature, humidity));
+  CHECK(sht85_compute_values(dev, raw, temperature, humidity));
   dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw = (raw[0]<<8) | raw[1];
   dev->sen.outs[SHT85_OUT_RH_ID].m_raw = (raw[3]<<8) | raw[4];
   dev->sen.outs[SHT85_OUT_TEMP_ID].temperature = *temperature;
   dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity = *humidity;
   dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-
+  ESP_LOGD(TAG, "Temp raw: %u",dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw);
+  ESP_LOGD(TAG, "RH raw: %u",dev->sen.outs[SHT85_OUT_RH_ID].m_raw);
+  ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SHT85_OUT_TEMP_ID].temperature);
+  ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity);
   return ESP_OK;
 }
 
@@ -319,8 +324,9 @@ esp_err_t sht85_start_measurement(sht85_t *dev) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    dev->meas_start_time = esp_timer_get_time();
     CHECK(send_cmd(dev, get_meas_cmd(dev)));
+    ESP_LOGD(TAG, "Measurement started!");
+    dev->meas_start_time = esp_timer_get_time();
     dev->meas_started = true;
 
     return ESP_OK;
@@ -335,26 +341,44 @@ size_t sht85_get_measurement_duration(sht85_t *dev) {
 
 esp_err_t sht85_get_raw_data(sht85_t *dev, sht85_raw_data_t raw) {
     CHECK_ARG(dev);
-    time_t  timestamp;
+    esp_err_t ret;
     struct timeval tv;
-    if (is_measuring(dev))
-    {
+    if (is_measuring(dev)) {
         ESP_LOGE(TAG, "Measurement is still running");
         return ESP_ERR_INVALID_STATE;
     }
 
     dev->meas_started = false;
-    return read_res(dev, raw);
+
+    ret = read_res(dev, raw);
+    if(ret==ESP_OK) {
+      gettimeofday(&tv, NULL);
+      dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+      dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw=((raw[0] << 8) | raw[1]);
+      dev->sen.outs[SHT85_OUT_RH_ID].m_raw=((raw[3] << 8) | raw[4]);
+      ESP_LOGD(TAG, "Temp raw: %u",dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw);
+      ESP_LOGD(TAG, "RH raw: %u",dev->sen.outs[SHT85_OUT_RH_ID].m_raw);
+      // dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw=((raw[0] << 16) | (raw[1] << 8) | raw[2]);
+      // dev->sen.outs[SHT85_OUT_RH_ID].m_raw=((raw[3] << 16) | (raw[4] << 8) | raw[5]);
+    }
+    return ret;
 }
 
-esp_err_t sht85_compute_values(sht85_raw_data_t raw_data, float *temperature, float *humidity) {
+esp_err_t sht85_compute_values(sht85_t *dev, sht85_raw_data_t raw_data, float *temperature, float *humidity) {
     CHECK_ARG(raw_data && (temperature || humidity));
 
     if (temperature)
-        *temperature = ((uint16_t)raw_data[0] << 8 | raw_data[1]) * 175.0 / 65535.0 - 45.0;
+        *temperature = 45.0+175.0*(((float)((uint16_t)((raw_data[0] << 8) | raw_data[1])))/65535.0);
+        // *temperature = ((uint16_t)((raw_data[0] << 8) | raw_data[1])) * 175.0 / 65535.0 - 45.0;
 
     if (humidity)
-        *humidity = ((uint16_t)raw_data[3] << 8 | raw_data[4]) * 125.0 / 65535.0 - 6.0;
+        *humidity = 100.0*(((float)((uint16_t)((raw_data[3] << 8) | raw_data[4])))/ 65535.0);
+        // *humidity = ((uint16_t)((raw_data[3] << 8) | raw_data[4])) * 125.0 / 65535.0 - 6.0;
+
+    dev->sen.outs[SHT85_OUT_TEMP_ID].temperature=*temperature;
+    dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity=*humidity;
+    ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SHT85_OUT_TEMP_ID].temperature);
+    ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity);
 
     return ESP_OK;
 }
@@ -363,5 +387,40 @@ esp_err_t sht85_get_results(sht85_t *dev, float *temperature, float *humidity) {
     sht85_raw_data_t raw;
     CHECK(sht85_get_raw_data(dev, raw));
 
-    return sht85_compute_values(raw, temperature, humidity);
+    return sht85_compute_values(dev, raw, temperature, humidity);
+}
+
+
+esp_err_t sht85_iot_sen_start_measurement(void *dev) {
+  return sht85_start_measurement((sht85_t*) dev);
+}
+
+esp_err_t sht85_iot_sen_get_data(void *dev) {
+  float temperature, humidity;
+  return sht85_get_results((sht85_t*) dev, &temperature, &humidity);
+}
+
+esp_err_t sht85_iot_sen_sleep_mode_awake(void *dev) {
+  sht85_t* dev_ = (sht85_t*) dev;
+  // if((dev_->settings.enable_reg & TSL2591_ALS_ON) && (dev_->settings.enable_reg & TSL2591_POWER_ON))
+  //   return sht85_basic_enable(dev_);
+  // else
+  //   return sht85_basic_disable(dev_);
+    return ESP_OK;
+}
+esp_err_t sht85_iot_sen_sleep_mode_sleep(void *dev) {
+  sht85_t* dev_ = (sht85_t*) dev;
+  // if((dev_->settings.enable_reg & TSL2591_ALS_ON) && (dev_->settings.enable_reg & TSL2591_POWER_ON))
+  //   return sht85_basic_enable(dev_);
+  // else
+  //   return sht85_basic_disable(dev_);
+    return ESP_OK;
+}
+
+esp_err_t sht85_iot_sen_reset(void *dev) {
+  return ESP_OK;
+}
+
+esp_err_t sht85_iot_sen_reinit(void *dev) {
+  return ESP_OK;
 }

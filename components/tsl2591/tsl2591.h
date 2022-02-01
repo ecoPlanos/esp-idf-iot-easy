@@ -495,6 +495,54 @@ esp_err_t tsl2591_basic_enable(tsl2591_t *dev);
 /**************************************************************************/
 esp_err_t tsl2591_basic_disable(tsl2591_t *dev);
 
+/**
+ * @brief Start a new measurement
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t tsl2591_iot_sen_start_measurement(void *dev);
+
+/**
+ * @brief Get last measurement data
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t tsl2591_iot_sen_get_data(void *dev);
+
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t tsl2591_iot_sen_sleep_mode_awake(void *dev);
+
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t tsl2591_iot_sen_sleep_mode_sleep(void *dev);
+
+/**
+ * @brief Reset sensor
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t tsl2591_iot_sen_reset(void *dev);
+
+/**
+ * @brief Reinitialize sensor
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t tsl2591_iot_sen_reinit(void *dev);
+
 #ifdef __cplusplus
 }
 #endif

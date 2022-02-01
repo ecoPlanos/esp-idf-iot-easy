@@ -125,7 +125,7 @@ typedef struct {
  * Device config.
  */
 typedef struct {
-  uint32_t delay_after_awake;    // Package Identification
+  uint32_t delay_after_awake_ms;    // delay before measuring after a wake from sleep event
 } pms1003_conf_t;
 
 /**
@@ -179,8 +179,6 @@ esp_err_t pms1003_init(pms1003_t *dev);
  */
 esp_err_t pms1003_reset(pms1003_t *dev);
 
-esp_err_t pms1003_iot_sen_measurement(void *dev);
-
 esp_err_t pms1003_measure(pms1003_t *dev, pms1003_raw_data_t *raw);
 
 /**
@@ -214,6 +212,7 @@ esp_err_t pms1003_start_measurement(pms1003_t *dev);
 
 esp_err_t pms1003_set_data_mode(pms1003_t *dev, pms1003_mode_type_t data_mode);
 esp_err_t pms1003_set_sleep_mode(pms1003_t *dev, pms1003_sleep_type_t sleep_mode);
+esp_err_t pms1003_toggle_sleep_mode(pms1003_t *dev);
 
 /**
  * @brief Get the duration of a measurement in RTOS ticks.
@@ -253,12 +252,12 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw);
 /**
  * @brief Computes sensor values from raw data
  *
- * @param raw_data         Byte array that contains raw data
+ * @param raw              Byte array that contains raw data
  * @param[out] temperature Temperature in degree Celsius
  * @param[out] humidity    Humidity in percent
  * @return                 `ESP_OK` on success
  */
-esp_err_t pms1003_compute_values(pms1003_t *dev,pms1003_raw_data_t *raw_data);
+esp_err_t pms1003_compute_values(pms1003_t *dev,pms1003_raw_data_t *raw);
 
 /**
  * @brief Get measurement results in form of sensor values
@@ -272,6 +271,62 @@ esp_err_t pms1003_compute_values(pms1003_t *dev,pms1003_raw_data_t *raw_data);
  * @return                 `ESP_OK` on success
  */
 esp_err_t pms1003_get_results(pms1003_t *dev);
+
+/**
+ * @brief Start a new measurement
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t pms1003_iot_sen_start_measurement(void *dev);
+
+/**
+ * @brief Get last measurement data
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t pms1003_iot_sen_get_data(void *dev);
+
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t pms1003_iot_sen_toggle_sleep_mode(void *dev);
+
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t pms1003_iot_sen_sleep_mode_awake(void *dev);
+
+/**
+ * @brief Set sensor to sleep mode or awake from sleep
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t pms1003_iot_sen_sleep_mode_sleep(void *dev);
+
+/**
+ * @brief Reset sensor
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t pms1003_iot_sen_reset(void *dev);
+
+/**
+ * @brief Reinitialize sensor
+ *
+ * @param dev              Device descriptor
+ * @return                 `ESP_OK` on success
+ */
+esp_err_t pms1003_iot_sen_reinit(void *dev);
 
 #ifdef __cplusplus
 }

@@ -168,7 +168,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.info.version = 1;
   dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL;
   dev->sen.conf.min_period_us = min_period_us;
-  dev->sen.info.delay_s_ms = 0;
+  dev->sen.status.delay_start_get_ms = 0;
   dev->sen.info.out_nr = 1;
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
   dev->sen.conf.addr = 0;
@@ -188,6 +188,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.outs[0].out_val_type=SEN_OUT_VAL_TYPE_SEN_SWITCH;
   // dev->sen.outs[0].trig.filtered_count=0;
   dev->sen.outs[0].m_raw=0;
+  dev->sen.outs[0].srate=0;
 
   gpio_config_t io_conf;
   io_conf.intr_type = GPIO_INTR_ANYEDGE;
@@ -235,4 +236,3 @@ esp_err_t switch_sen_get_val(switch_sen_t *dev) {
 //   //TODO: get latest sensor data
 //   return ESP_OK;
 // }
-

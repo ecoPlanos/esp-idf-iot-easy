@@ -73,7 +73,7 @@ static const char *TAG = "tsl2591";
 #define TSL2591_SPECIAL_CLEAR_BOTH      0x07    // Clear ALS and no persist ALS interrupt
 #define TSL2591_SPECIAL_CLEAR_NP_INTR   0x0A    // Clear no persist ALS interrupt
 
-// TSL2591 integration times in useconds.
+// TSL2591 integration times in mseconds.
 #define TSL2591_INTEGRATION_TIME_100MS  110
 #define TSL2591_INTEGRATION_TIME_200MS  210
 #define TSL2591_INTEGRATION_TIME_300MS  310
@@ -106,7 +106,7 @@ const uint32_t gains_max_values[TSL2591_GAINS_NR] = {65535,65535,65535,65535};
 const int32_t gains_min_values[TSL2591_GAINS_NR] = {0,0,0,0};
 const float gains_th_h[TSL2591_GAINS_NR] = {0.90,0.90,0.90,0.90};
 const float gains_th_l[TSL2591_GAINS_NR] = {0.03,0.03,0.03,0.03};
-const uint32_t int_times[TSL2591_INTEGRATION_TIMES_NR] = {100,200,300,400,500,600};
+const uint32_t int_times[TSL2591_INTEGRATION_TIMES_NR] = {120,220,320,420,520,620};
 const uint32_t itimes_max_values[TSL2591_INTEGRATION_TIMES_NR] = {37888,65535,65535,65535,65535,65535};
 const int32_t itimes_min_values[TSL2591_INTEGRATION_TIMES_NR] = {0,0,0,0,0,0};
 const float itimes_th_h[TSL2591_INTEGRATION_TIMES_NR] = {0.70,0.75,0.80,0.85,0.90,0.95};
@@ -114,8 +114,7 @@ const float itimes_th_l[TSL2591_INTEGRATION_TIMES_NR] = {0.03,0.03,0.03,0.03,0.0
 
 
 // Read/write to registers.
-static inline esp_err_t write_register(tsl2591_t *dev, uint8_t reg, uint8_t value)
-{
+static inline esp_err_t write_register(tsl2591_t *dev, uint8_t reg, uint8_t value) {
   esp_err_t err=ESP_OK;
   ESP_LOGD(TAG, "Writing register: 0x%x; Data: 0x%x.", reg, value);
   err = i2c_dev_write_reg(&dev->i2c_dev,
@@ -127,8 +126,7 @@ static inline esp_err_t write_register(tsl2591_t *dev, uint8_t reg, uint8_t valu
   return err;
 }
 
-static inline esp_err_t read_register(tsl2591_t *dev, uint8_t reg, uint8_t *value)
-{
+static inline esp_err_t read_register(tsl2591_t *dev, uint8_t reg, uint8_t *value) {
     esp_err_t err=ESP_OK;
     err = i2c_dev_read_reg(&dev->i2c_dev,
       TSL2591_REG_COMMAND | TSL2591_TRANSACTION_NORMAL | reg, value, 1);
@@ -141,39 +139,96 @@ static inline esp_err_t read_register(tsl2591_t *dev, uint8_t reg, uint8_t *valu
 }
 
 // Write special function to command register.
-static inline esp_err_t write_special_function(tsl2591_t *dev, uint8_t special_function)
-{
+static inline esp_err_t write_special_function(tsl2591_t *dev, uint8_t special_function) {
     uint8_t function = TSL2591_REG_COMMAND | TSL2591_TRANSACTION_SPECIAL | special_function;
     ESP_LOGD(TAG, "Calling special function: 0x%x with 0x%x.", special_function, function);
     return i2c_dev_write(&dev->i2c_dev, NULL, 0, &function, 8);
 }
 
 // Read/write enable register.
-static inline esp_err_t write_enable_register(tsl2591_t *dev, uint8_t value)
-{
+static inline esp_err_t write_enable_register(tsl2591_t *dev, uint8_t value) {
     return write_register(dev, TSL2591_REG_ENABLE, value);
 }
 
-static inline esp_err_t read_enable_register(tsl2591_t *dev, uint8_t *value)
-{
-    return read_register(dev, TSL2591_REG_ENABLE, value);
+static inline esp_err_t read_enable_register(tsl2591_t *dev, uint8_t *value) {
+  esp_err_t ret;
+  ret = read_register(dev, TSL2591_REG_ENABLE, value);
+  if(ret==ESP_OK) {
+    dev->settings.enable_reg = *value;
+    dev->sen.status.sleeping = ((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
+    ESP_LOGD(TAG, "Sleeping: %u",dev->sen.status.sleeping);
+    ESP_LOGD(TAG, "enable reg: %u",dev->settings.enable_reg);
+  } else ESP_LOGE(TAG, "Couldn't get enable register!");
+  return ret;
 }
 
 // Read/write control register.
-static inline esp_err_t write_control_register(tsl2591_t *dev, uint8_t value)
-{
+static inline esp_err_t write_control_register(tsl2591_t *dev, uint8_t value) {
     return write_register(dev, TSL2591_REG_CONTROL, value);
 }
 
-static inline esp_err_t read_control_register(tsl2591_t *dev, uint8_t *value)
-{
-    return read_register(dev, TSL2591_REG_CONTROL, value);
+static inline esp_err_t read_control_register(tsl2591_t *dev, uint8_t *value) {
+  esp_err_t ret;
+  ret = read_register(dev, TSL2591_REG_CONTROL, value);
+  if(ret==ESP_OK) {
+    dev->settings.control_reg = *value;
+    uint8_t i_idx;
+    switch(dev->settings.control_reg&0x07)
+    {
+      case TSL2591_INTEGRATION_100MS:
+        i_idx=0;
+      break;
+      case TSL2591_INTEGRATION_200MS:
+        i_idx=1;
+      break;
+      case TSL2591_INTEGRATION_300MS:
+        i_idx=2;
+      break;
+      case TSL2591_INTEGRATION_400MS:
+        i_idx=3;
+      break;
+      case TSL2591_INTEGRATION_500MS:
+        i_idx=4;
+      break;
+      case TSL2591_INTEGRATION_600MS:
+        i_idx=5;
+      break;
+      default:
+        i_idx=0;
+      break;
+    }
+    dev->sen.conf.delay_after_awake_ms = int_times[i_idx];
+    dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
+    dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
+
+    switch(dev->settings.control_reg&0x30)
+    {
+      case TSL2591_GAIN_LOW:
+        i_idx=0;
+      break;
+      case TSL2591_GAIN_MEDIUM:
+        i_idx=1;
+      break;
+      case TSL2591_GAIN_HIGH:
+        i_idx=2;
+      break;
+      case TSL2591_GAIN_MAX:
+        i_idx=3;
+      break;
+      default:
+        i_idx=3;
+      break;
+    }
+    dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx=i_idx;
+    dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc.idx=i_idx;
+
+  } else ESP_LOGE(TAG, "Couldn't get control register!");
+  return ret;
 }
 
 // Read 16 bit from two consecutive registers.
 // Note that the sensor will shadow for example C0DATAH if C0DATAL is read.
-static inline esp_err_t read_register16(tsl2591_t *dev, uint8_t low_register, uint16_t *value)
-{
+static inline esp_err_t read_register16(tsl2591_t *dev, uint8_t low_register, uint16_t *value) {
     uint8_t buf[2];
     esp_err_t err=ESP_OK;
     err = i2c_dev_read_reg(&dev->i2c_dev,
@@ -187,8 +242,7 @@ static inline esp_err_t read_register16(tsl2591_t *dev, uint8_t low_register, ui
     return err;
 }
 
-static inline tsl2591_gain_t idx2gain(uint8_t idx)
-{
+static inline tsl2591_gain_t idx2gain(uint8_t idx) {
   switch(idx)
   {
     case 0:
@@ -209,8 +263,7 @@ static inline tsl2591_gain_t idx2gain(uint8_t idx)
   }
 }
 
-static inline tsl2591_integration_time_t idx2itime(uint8_t idx)
-{
+static inline tsl2591_integration_time_t idx2itime(uint8_t idx) {
   switch(idx)
   {
     case 0:
@@ -239,8 +292,7 @@ static inline tsl2591_integration_time_t idx2itime(uint8_t idx)
 
 
 // Initialization.
-esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id)
-{
+esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id) {
     CHECK_ARG(dev);
     ESP_LOGD(TAG, "Initialize descriptor");
     dev->i2c_dev.port = port;
@@ -257,15 +309,20 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
-    dev->sen.conf.min_period_us = 0;
-    dev->sen.info.delay_s_ms = 0;
+    dev->sen.conf.min_period_us = 110000;
+    dev->sen.status.delay_start_get_ms = 620;
     dev->sen.info.out_nr = 2; //channel 0 (Full spectrum) and channel 1 (IR)
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.addr = TSL2591_I2C_ADDR;
     dev->sen.timestamp=0;
     dev->sen.conf.period_ms=nearest_prime(CONFIG_TSL2591_DEFAULT_PERIOD_MS);
-    dev->sen.get_data=tsl2591_iot_sen_measurement;
     dev->sen.dev=dev;
+    dev->sen.reset=tsl2591_iot_sen_reset;
+    dev->sen.reinit=tsl2591_iot_sen_reinit;
+    dev->sen.start_measurement=tsl2591_iot_sen_start_measurement;
+    dev->sen.get_data=tsl2591_iot_sen_get_data;
+    dev->sen.awake=tsl2591_iot_sen_sleep_mode_awake;
+    dev->sen.sleep=tsl2591_iot_sen_sleep_mode_sleep;
 
     dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
@@ -301,16 +358,14 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
 
-esp_err_t tsl2591_free_desc(tsl2591_t *dev)
-{
+esp_err_t tsl2591_free_desc(tsl2591_t *dev) {
     CHECK_ARG(dev);
     ESP_LOGD(TAG, "Free descriptor.");
 
     return i2c_dev_delete_mutex(&dev->i2c_dev);
 }
 
-esp_err_t tsl2591_init(tsl2591_t *dev)
-{
+esp_err_t tsl2591_init(tsl2591_t *dev) {
     CHECK_ARG(dev);
     ESP_LOGD(TAG, "Initialize sensor.");
 
@@ -318,7 +373,7 @@ esp_err_t tsl2591_init(tsl2591_t *dev)
 
     uint8_t tmp_reg = 0;
     I2C_DEV_CHECK(&dev->i2c_dev, read_enable_register(dev, &tmp_reg));
-    dev->settings.enable_reg = tmp_reg;
+
     ESP_LOGD(TAG, "Initial enable register: %x.", tmp_reg);
 
     I2C_DEV_CHECK(&dev->i2c_dev, read_control_register(dev, &tmp_reg));
@@ -361,46 +416,37 @@ esp_err_t tsl2591_init(tsl2591_t *dev)
     dev->sen.status.status_code = SEN_STATUS_OK;
     // dev->sen.info.sen_lib_version = TSL2591_LIB_VERSION;
     // Wait until the first integration cycle is completed.
-    tsl2591_integration_time_t integration_time;
-    ESP_ERROR_CHECK(tsl2591_get_integration_time(dev, &integration_time));
-    switch (integration_time)
-    {
-    case TSL2591_INTEGRATION_100MS:
-        SLEEP_MS(110);
-        break;
-    case TSL2591_INTEGRATION_200MS:
-        SLEEP_MS(210);
-        break;
-    case TSL2591_INTEGRATION_300MS:
-        SLEEP_MS(310);
-        break;
-    case TSL2591_INTEGRATION_400MS:
-        SLEEP_MS(410);
-        break;
-    case TSL2591_INTEGRATION_500MS:
-        SLEEP_MS(510);
-        break;
-    case TSL2591_INTEGRATION_600MS:
-        SLEEP_MS(610);
-        break;
-    }
+    SLEEP_MS(int_times[dev->settings.control_reg & 0x07]+10); //Wait integration time
+    // tsl2591_integration_time_t integration_time;
+    // ESP_ERROR_CHECK(tsl2591_get_integration_time(dev, &integration_time));
+    // switch (integration_time)
+    // {
+    // case TSL2591_INTEGRATION_100MS:
+    //     SLEEP_MS(110);
+    //     break;
+    // case TSL2591_INTEGRATION_200MS:
+    //     SLEEP_MS(210);
+    //     break;
+    // case TSL2591_INTEGRATION_300MS:
+    //     SLEEP_MS(310);
+    //     break;
+    // case TSL2591_INTEGRATION_400MS:
+    //     SLEEP_MS(410);
+    //     break;
+    // case TSL2591_INTEGRATION_500MS:
+    //     SLEEP_MS(510);
+    //     break;
+    // case TSL2591_INTEGRATION_600MS:
+    //     SLEEP_MS(610);
+    //     break;
+    // }
     dev->sen.status.status_code=SEN_STATUS_OK;
     return ESP_OK;
 }
 
-esp_err_t tsl2591_iot_sen_measurement(void *dev) {
-  // esp_err_t ret;
-  // uint16_t channel0, channel1;
-  float lux;
-  // ret = tsl2591_get_channel_data((tsl2591_t*) dev, &channel0, &channel1);
-  // if(ret!=ESP_OK) return ret;
-  // return tsl2591_calculate_lux();
-  return tsl2591_get_lux((tsl2591_t*) dev,&lux);
-}
 
 // Measure.
-esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1)
-{
+esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1) {
     // uint64_t timestamp;
     struct timeval tv;
     CHECK_ARG(dev && channel0 &&  channel1);
@@ -446,6 +492,7 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
       else
       {
         ESP_LOGW(TAG,"Sensor saturated!");
+        ESP_LOGD(TAG,"dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx: %u",dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx);
       }
     }
     // else
@@ -459,8 +506,7 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
     return ESP_OK;
 }
 
-esp_err_t tsl2591_calculate_lux(tsl2591_t *dev, uint16_t channel0, uint16_t channel1, float *lux)
-{
+esp_err_t tsl2591_calculate_lux(tsl2591_t *dev, uint16_t channel0, uint16_t channel1, float *lux) {
     CHECK_ARG(dev && lux);
 
     float atime, again;
@@ -512,8 +558,7 @@ esp_err_t tsl2591_calculate_lux(tsl2591_t *dev, uint16_t channel0, uint16_t chan
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_lux(tsl2591_t *dev, float *lux)
-{
+esp_err_t tsl2591_get_lux(tsl2591_t *dev, float *lux) {
     esp_err_t err=ESP_OK;
     CHECK_ARG(dev && lux);
 
@@ -529,8 +574,7 @@ esp_err_t tsl2591_get_lux(tsl2591_t *dev, float *lux)
 
 
 // Setters and getters enable register.
-esp_err_t tsl2591_set_power_status(tsl2591_t *dev, tsl2591_power_status_t power_status)
-{
+esp_err_t tsl2591_set_power_status(tsl2591_t *dev, tsl2591_power_status_t power_status) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -538,23 +582,22 @@ esp_err_t tsl2591_set_power_status(tsl2591_t *dev, tsl2591_power_status_t power_
     I2C_DEV_CHECK(&dev->i2c_dev,
         write_enable_register(dev, (dev->settings.enable_reg & ~TSL2591_POWER_ON) | power_status));
     dev->settings.enable_reg = (dev->settings.enable_reg & ~TSL2591_POWER_ON) | power_status;
+    dev->sen.status.sleeping = ((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
 
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_power_status(tsl2591_t *dev, tsl2591_power_status_t *power_status)
-{
+esp_err_t tsl2591_get_power_status(tsl2591_t *dev, tsl2591_power_status_t *power_status) {
     CHECK_ARG(dev && power_status);
 
-    *power_status = dev->settings.enable_reg & TSL2591_POWER_ON;
+    *power_status = (dev->settings.enable_reg & TSL2591_POWER_ON);
 
     return ESP_OK;
 }
 
-esp_err_t tsl2591_set_als_status(tsl2591_t *dev, tsl2591_als_status_t als_status)
-{
+esp_err_t tsl2591_set_als_status(tsl2591_t *dev, tsl2591_als_status_t als_status) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -562,14 +605,14 @@ esp_err_t tsl2591_set_als_status(tsl2591_t *dev, tsl2591_als_status_t als_status
     I2C_DEV_CHECK(&dev->i2c_dev,
         write_enable_register(dev, (dev->settings.enable_reg & ~TSL2591_ALS_ON) | als_status));
     dev->settings.enable_reg = (dev->settings.enable_reg & ~TSL2591_ALS_ON) | als_status;
+    dev->sen.status.sleeping = !((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
 
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_als_status(tsl2591_t *dev, tsl2591_als_status_t *als_status)
-{
+esp_err_t tsl2591_get_als_status(tsl2591_t *dev, tsl2591_als_status_t *als_status) {
     CHECK_ARG(dev && als_status);
 
     *als_status = dev->settings.enable_reg & TSL2591_ALS_ON;
@@ -577,15 +620,13 @@ esp_err_t tsl2591_get_als_status(tsl2591_t *dev, tsl2591_als_status_t *als_statu
     return ESP_OK;
 }
 
-esp_err_t tsl2591_set_interrupt(tsl2591_t *dev, tsl2591_interrupt_t interrupt)
-{
+esp_err_t tsl2591_set_interrupt(tsl2591_t *dev, tsl2591_interrupt_t interrupt) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
     I2C_DEV_CHECK(&dev->i2c_dev,
         write_enable_register(dev, (dev->settings.enable_reg & ~TSL2591_ALS_INTR_BOTH_ON) | interrupt));
-    dev->settings.enable_reg = (dev->settings.enable_reg & ~TSL2591_ALS_INTR_BOTH_ON) | interrupt;
 
     uint8_t tmp = 0;
     I2C_DEV_CHECK(&dev->i2c_dev,
@@ -596,8 +637,7 @@ esp_err_t tsl2591_set_interrupt(tsl2591_t *dev, tsl2591_interrupt_t interrupt)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_interrupt(tsl2591_t *dev, tsl2591_interrupt_t *interrupt)
-{
+esp_err_t tsl2591_get_interrupt(tsl2591_t *dev, tsl2591_interrupt_t *interrupt) {
     CHECK_ARG(dev && interrupt);
 
     *interrupt = dev->settings.enable_reg & TSL2591_ALS_INTR_BOTH_ON;
@@ -605,8 +645,7 @@ esp_err_t tsl2591_get_interrupt(tsl2591_t *dev, tsl2591_interrupt_t *interrupt)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_set_sleep_after_intr(tsl2591_t *dev, tsl2591_sleep_after_intr_t sleep_after_intr)
-{
+esp_err_t tsl2591_set_sleep_after_intr(tsl2591_t *dev, tsl2591_sleep_after_intr_t sleep_after_intr) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -620,8 +659,7 @@ esp_err_t tsl2591_set_sleep_after_intr(tsl2591_t *dev, tsl2591_sleep_after_intr_
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_sleep_after_intr(tsl2591_t *dev, tsl2591_sleep_after_intr_t *sleep_after_intr)
-{
+esp_err_t tsl2591_get_sleep_after_intr(tsl2591_t *dev, tsl2591_sleep_after_intr_t *sleep_after_intr) {
     CHECK_ARG(dev && sleep_after_intr);
 
     *sleep_after_intr = dev->settings.enable_reg & TSL2591_SLEEP_AFTER_ON;
@@ -631,8 +669,7 @@ esp_err_t tsl2591_get_sleep_after_intr(tsl2591_t *dev, tsl2591_sleep_after_intr_
 
 
 // Setters and getters control register.
-esp_err_t tsl2591_set_integration_time(tsl2591_t *dev, tsl2591_integration_time_t integration_time)
-{
+esp_err_t tsl2591_set_integration_time(tsl2591_t *dev, tsl2591_integration_time_t integration_time) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -670,24 +707,51 @@ esp_err_t tsl2591_set_integration_time(tsl2591_t *dev, tsl2591_integration_time_
       break;
     }
 
+    dev->sen.conf.delay_after_awake_ms = int_times[i_idx];
     dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
     dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_integration_time(tsl2591_t *dev, tsl2591_integration_time_t *integration_time)
-{
+esp_err_t tsl2591_get_integration_time(tsl2591_t *dev, tsl2591_integration_time_t *integration_time) {
     CHECK_ARG(dev && integration_time);
 
     // Last 3 bits represent the integration time.
     *integration_time = dev->settings.control_reg & 0x07;
+    uint8_t i_idx;
+    switch(*integration_time)
+    {
+      case TSL2591_INTEGRATION_100MS:
+        i_idx=0;
+      break;
+      case TSL2591_INTEGRATION_200MS:
+        i_idx=1;
+      break;
+      case TSL2591_INTEGRATION_300MS:
+        i_idx=2;
+      break;
+      case TSL2591_INTEGRATION_400MS:
+        i_idx=3;
+      break;
+      case TSL2591_INTEGRATION_500MS:
+        i_idx=4;
+      break;
+      case TSL2591_INTEGRATION_600MS:
+        i_idx=5;
+      break;
+      default:
+        i_idx=0;
+      break;
+    }
+    dev->sen.conf.delay_after_awake_ms = int_times[i_idx];
+    dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
+    dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
     return ESP_OK;
 }
 
-esp_err_t tsl2591_set_gain(tsl2591_t *dev, tsl2591_gain_t gain)
-{
+esp_err_t tsl2591_set_gain(tsl2591_t *dev, tsl2591_gain_t gain) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -724,8 +788,7 @@ esp_err_t tsl2591_set_gain(tsl2591_t *dev, tsl2591_gain_t gain)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_gain(tsl2591_t *dev, tsl2591_gain_t *gain)
-{
+esp_err_t tsl2591_get_gain(tsl2591_t *dev, tsl2591_gain_t *gain) {
     CHECK_ARG(dev && gain);
 
     *gain = dev->settings.control_reg & TSL2591_GAIN_MAX;
@@ -735,8 +798,7 @@ esp_err_t tsl2591_get_gain(tsl2591_t *dev, tsl2591_gain_t *gain)
 
 
 // Setter and getter persistence filter.
-esp_err_t tsl2591_set_persistence_filter(tsl2591_t *dev, tsl2591_persistence_filter_t filter)
-{
+esp_err_t tsl2591_set_persistence_filter(tsl2591_t *dev, tsl2591_persistence_filter_t filter) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -750,8 +812,7 @@ esp_err_t tsl2591_set_persistence_filter(tsl2591_t *dev, tsl2591_persistence_fil
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_persistence_filter(tsl2591_t *dev, tsl2591_persistence_filter_t *filter)
-{
+esp_err_t tsl2591_get_persistence_filter(tsl2591_t *dev, tsl2591_persistence_filter_t *filter) {
     CHECK_ARG(dev && filter);
 
     *filter = dev->settings.persistence_reg & TSL2591_60_CYCLES;
@@ -761,8 +822,7 @@ esp_err_t tsl2591_get_persistence_filter(tsl2591_t *dev, tsl2591_persistence_fil
 
 
 // Setters thresholds.
-esp_err_t tsl2591_als_set_low_threshold(tsl2591_t *dev, uint16_t low_threshold)
-{
+esp_err_t tsl2591_als_set_low_threshold(tsl2591_t *dev, uint16_t low_threshold) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -775,8 +835,7 @@ esp_err_t tsl2591_als_set_low_threshold(tsl2591_t *dev, uint16_t low_threshold)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_als_set_high_threshold(tsl2591_t *dev, uint16_t high_threshold)
-{
+esp_err_t tsl2591_als_set_high_threshold(tsl2591_t *dev, uint16_t high_threshold) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -789,8 +848,7 @@ esp_err_t tsl2591_als_set_high_threshold(tsl2591_t *dev, uint16_t high_threshold
     return ESP_OK;
 }
 
-esp_err_t tsl2591_no_persist_set_low_threshold(tsl2591_t *dev, uint16_t low_threshold)
-{
+esp_err_t tsl2591_no_persist_set_low_threshold(tsl2591_t *dev, uint16_t low_threshold) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -803,8 +861,7 @@ esp_err_t tsl2591_no_persist_set_low_threshold(tsl2591_t *dev, uint16_t low_thre
     return ESP_OK;
 }
 
-esp_err_t tsl2591_no_persist_set_high_threshold(tsl2591_t *dev, uint16_t high_threshold)
-{
+esp_err_t tsl2591_no_persist_set_high_threshold(tsl2591_t *dev, uint16_t high_threshold) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -819,8 +876,7 @@ esp_err_t tsl2591_no_persist_set_high_threshold(tsl2591_t *dev, uint16_t high_th
 
 
 // Special functions.
-esp_err_t tsl2591_set_test_intr(tsl2591_t *dev)
-{
+esp_err_t tsl2591_set_test_intr(tsl2591_t *dev) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -833,8 +889,7 @@ esp_err_t tsl2591_set_test_intr(tsl2591_t *dev)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_clear_als_intr(tsl2591_t *dev)
-{
+esp_err_t tsl2591_clear_als_intr(tsl2591_t *dev) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -847,8 +902,7 @@ esp_err_t tsl2591_clear_als_intr(tsl2591_t *dev)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_clear_als_np_intr(tsl2591_t *dev)
-{
+esp_err_t tsl2591_clear_als_np_intr(tsl2591_t *dev) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -861,8 +915,7 @@ esp_err_t tsl2591_clear_als_np_intr(tsl2591_t *dev)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_clear_both_intr(tsl2591_t *dev)
-{
+esp_err_t tsl2591_clear_both_intr(tsl2591_t *dev) {
     CHECK_ARG(dev);
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -877,8 +930,7 @@ esp_err_t tsl2591_clear_both_intr(tsl2591_t *dev)
 
 
 // Getters status flags.
-esp_err_t tsl2591_get_np_intr_flag(tsl2591_t *dev, bool *flag)
-{
+esp_err_t tsl2591_get_np_intr_flag(tsl2591_t *dev, bool *flag) {
     CHECK_ARG(dev && flag);
 
     uint8_t tmp;
@@ -895,8 +947,7 @@ esp_err_t tsl2591_get_np_intr_flag(tsl2591_t *dev, bool *flag)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_als_intr_flag(tsl2591_t *dev, bool *flag)
-{
+esp_err_t tsl2591_get_als_intr_flag(tsl2591_t *dev, bool *flag) {
     CHECK_ARG(dev && flag);
 
     uint8_t tmp;
@@ -913,8 +964,7 @@ esp_err_t tsl2591_get_als_intr_flag(tsl2591_t *dev, bool *flag)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_get_als_valid_flag(tsl2591_t *dev, bool *flag)
-{
+esp_err_t tsl2591_get_als_valid_flag(tsl2591_t *dev, bool *flag) {
     CHECK_ARG(dev && flag);
 
     uint8_t tmp;
@@ -931,8 +981,7 @@ esp_err_t tsl2591_get_als_valid_flag(tsl2591_t *dev, bool *flag)
     return ESP_OK;
 }
 
-esp_err_t tsl2591_basic_enable(tsl2591_t *dev)
-{
+esp_err_t tsl2591_basic_enable(tsl2591_t *dev) {
   CHECK_ARG(dev);
 
   I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -940,17 +989,16 @@ esp_err_t tsl2591_basic_enable(tsl2591_t *dev)
   I2C_DEV_CHECK(&dev->i2c_dev,
       write_enable_register(dev, dev->settings.enable_reg | TSL2591_ALS_ON | TSL2591_POWER_ON));
   dev->settings.enable_reg = dev->settings.enable_reg | TSL2591_ALS_ON | TSL2591_POWER_ON;
-
+  dev->sen.status.sleeping = false;
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-  ESP_LOGD(TAG,"Sleeping for %u ms",int_times[dev->settings.control_reg & 0x07]+10);
-  SLEEP_MS(int_times[dev->settings.control_reg & 0x07]+10); //Wait integration time
+  // ESP_LOGD(TAG,"Sleeping for %u ms",int_times[dev->settings.control_reg & 0x07]+10);
+  // SLEEP_MS(int_times[dev->settings.control_reg & 0x07]+10); //Wait integration time
 
   return ESP_OK;
 }
 
-esp_err_t tsl2591_basic_disable(tsl2591_t *dev)
-{
+esp_err_t tsl2591_basic_disable(tsl2591_t *dev) {
   CHECK_ARG(dev);
 
   ESP_LOGD(TAG,"Disabeling device and ALS");
@@ -960,8 +1008,44 @@ esp_err_t tsl2591_basic_disable(tsl2591_t *dev)
   I2C_DEV_CHECK(&dev->i2c_dev,
     write_enable_register(dev, dev->settings.enable_reg & ~TSL2591_ALS_ON & ~TSL2591_POWER_ON));
     dev->settings.enable_reg = dev->settings.enable_reg & ~TSL2591_ALS_ON & ~TSL2591_POWER_ON;
-
+    dev->sen.status.sleeping = true;
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
     return ESP_OK;
+}
+
+esp_err_t tsl2591_iot_sen_start_measurement(void *dev) {
+  return tsl2591_basic_enable((tsl2591_t*)dev);
+}
+
+esp_err_t tsl2591_iot_sen_get_data(void *dev) {
+  // esp_err_t ret;
+  // uint16_t channel0, channel1;
+  float lux;
+  // ret = tsl2591_get_channel_data((tsl2591_t*) dev, &channel0, &channel1);
+  // if(ret!=ESP_OK) return ret;
+  // return tsl2591_calculate_lux();
+  return tsl2591_get_lux((tsl2591_t*) dev,&lux);
+}
+
+esp_err_t tsl2591_iot_sen_sleep_mode_awake(void *dev) {
+  tsl2591_t* dev_ = (tsl2591_t*) dev;
+  if(!(dev_->settings.enable_reg & TSL2591_ALS_ON) || !(dev_->settings.enable_reg & TSL2591_POWER_ON))
+    return tsl2591_basic_enable(dev_);
+  return ESP_OK;
+}
+
+esp_err_t tsl2591_iot_sen_sleep_mode_sleep(void *dev) {
+  tsl2591_t* dev_ = (tsl2591_t*) dev;
+  if((dev_->settings.enable_reg & TSL2591_ALS_ON) && (dev_->settings.enable_reg & TSL2591_POWER_ON))
+    return tsl2591_basic_disable(dev_);
+  return ESP_OK;
+}
+
+esp_err_t tsl2591_iot_sen_reset(void *dev) {
+  return ESP_OK;
+}
+
+esp_err_t tsl2591_iot_sen_reinit(void *dev) {
+  return ESP_OK;
 }

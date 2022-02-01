@@ -220,9 +220,7 @@ static const char *TAG = "bme680";
 /**
  * @brief   Raw data (integer values) read from sensor
  */
-typedef struct
-{
-
+typedef struct {
     bool gas_valid;      // indicate that gas measurement results are valid
     bool heater_stable;  // indicate that heater temperature was stable
 
@@ -242,9 +240,15 @@ typedef struct
 #define bme_set_reg_bit(byte, bitname, bit) ( (byte & ~bitname##_BITS) | \
                                               ((bit << bitname##_SHIFT) & bitname##_BITS) )
 #define bme_get_reg_bit(byte, bitname)      ( (byte & bitname##_BITS) >> bitname##_SHIFT )
+#define msb_lsb_xlsb_to_20bit(t,b,o) (t)((t) b[o] << 12 | (t) b[o+1] << 4 | b[o+2] >> 4)
+#define msb_lsb_to_type(t,b,o)       (t)(((t)b[o] << 8) | b[o+1])
 
-static inline esp_err_t read_reg_8_nolock(bme680_t *dev, uint8_t reg, uint8_t *data)
-{
+#define BME680_RAW_P_OFF BME680_REG_PRESS_MSB_0-BME680_REG_MEAS_STATUS_0
+#define BME680_RAW_T_OFF (BME680_RAW_P_OFF + BME680_REG_TEMP_MSB_0 - BME680_REG_PRESS_MSB_0)
+#define BME680_RAW_H_OFF (BME680_RAW_T_OFF + BME680_REG_HUM_MSB_0 - BME680_REG_TEMP_MSB_0)
+#define BME680_RAW_G_OFF (BME680_RAW_H_OFF + BME680_REG_GAS_R_MSB_0 - BME680_REG_HUM_MSB_0)
+
+static inline esp_err_t read_reg_8_nolock(bme680_t *dev, uint8_t reg, uint8_t *data) {
   esp_err_t err=ESP_OK;
   err=i2c_dev_read_reg(&dev->i2c_dev, reg, data, 1);
   if(err != ESP_OK){
@@ -254,8 +258,7 @@ static inline esp_err_t read_reg_8_nolock(bme680_t *dev, uint8_t reg, uint8_t *d
   return err;
 }
 
-static inline esp_err_t write_reg_8_nolock(bme680_t *dev, uint8_t reg, uint8_t data)
-{
+static inline esp_err_t write_reg_8_nolock(bme680_t *dev, uint8_t reg, uint8_t data) {
   esp_err_t err=ESP_OK;
   err=i2c_dev_write_reg(&dev->i2c_dev, reg, &data, 1);
   if(err != ESP_OK){
@@ -265,8 +268,7 @@ static inline esp_err_t write_reg_8_nolock(bme680_t *dev, uint8_t reg, uint8_t d
   return err;
 }
 
-static esp_err_t read_reg_8(bme680_t *dev, uint8_t reg, uint8_t *data)
-{
+static esp_err_t read_reg_8(bme680_t *dev, uint8_t reg, uint8_t *data) {
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
     I2C_DEV_CHECK(&dev->i2c_dev, read_reg_8_nolock(dev, reg, data));
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
@@ -274,8 +276,7 @@ static esp_err_t read_reg_8(bme680_t *dev, uint8_t reg, uint8_t *data)
     return ESP_OK;
 }
 
-static esp_err_t bme680_set_mode(bme680_t *dev, uint8_t mode)
-{
+static esp_err_t bme680_set_mode(bme680_t *dev, uint8_t mode) {
     uint8_t reg;
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
@@ -287,19 +288,10 @@ static esp_err_t bme680_set_mode(bme680_t *dev, uint8_t mode)
     return ESP_OK;
 }
 
-#define msb_lsb_xlsb_to_20bit(t,b,o) (t)((t) b[o] << 12 | (t) b[o+1] << 4 | b[o+2] >> 4)
-#define msb_lsb_to_type(t,b,o)       (t)(((t)b[o] << 8) | b[o+1])
 
-#define BME680_RAW_P_OFF BME680_REG_PRESS_MSB_0-BME680_REG_MEAS_STATUS_0
-#define BME680_RAW_T_OFF (BME680_RAW_P_OFF + BME680_REG_TEMP_MSB_0 - BME680_REG_PRESS_MSB_0)
-#define BME680_RAW_H_OFF (BME680_RAW_T_OFF + BME680_REG_HUM_MSB_0 - BME680_REG_TEMP_MSB_0)
-#define BME680_RAW_G_OFF (BME680_RAW_H_OFF + BME680_REG_GAS_R_MSB_0 - BME680_REG_HUM_MSB_0)
-
-static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
-{
+static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data) {
     struct timeval tv;
-    if (!dev->meas_started)
-    {
+    if (!dev->meas_started) {
         ESP_LOGE(TAG, "Measurement was not started");
         return ESP_ERR_INVALID_STATE;
     }
@@ -361,8 +353,7 @@ static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
  * @brief   Calculate temperature from raw temperature value
  * @ref     BME280 datasheet, page 50
  */
-static int16_t bme680_convert_temperature(bme680_t *dev, uint32_t raw_temperature)
-{
+static int16_t bme680_convert_temperature(bme680_t *dev, uint32_t raw_temperature) {
     bme680_calib_data_t *cd = &dev->calib_data;
 
     int64_t var1;
@@ -389,8 +380,7 @@ static int16_t bme680_convert_temperature(bme680_t *dev, uint32_t raw_temperatur
  * @ref         [BME680_diver](https://github.com/BoschSensortec/BME680_driver)
  * @ref         BME280 datasheet, page 50
  */
-static uint32_t bme680_convert_pressure(bme680_t *dev, uint32_t raw_pressure)
-{
+static uint32_t bme680_convert_pressure(bme680_t *dev, uint32_t raw_pressure) {
     bme680_calib_data_t *cd = &dev->calib_data;
 
     int32_t var1;
@@ -438,8 +428,7 @@ static uint32_t bme680_convert_pressure(bme680_t *dev, uint32_t raw_pressure)
  *
  * @ref         [BME680_diver](https://github.com/BoschSensortec/BME680_driver)
  */
-static uint32_t bme680_convert_humidity(bme680_t *dev, uint16_t raw_humidity)
-{
+static uint32_t bme680_convert_humidity(bme680_t *dev, uint16_t raw_humidity) {
     bme680_calib_data_t *cd = &dev->calib_data;
 
     int32_t var1;
@@ -501,8 +490,7 @@ static float lookup_table[16][2] = {
  * @brief   Calculate gas resistance from raw gas resitance value and gas range
  * @ref     BME680 datasheet
  */
-static uint32_t bme680_convert_gas(bme680_t *dev, uint16_t gas, uint8_t gas_range)
-{
+static uint32_t bme680_convert_gas(bme680_t *dev, uint16_t gas, uint8_t gas_range) {
     bme680_calib_data_t *cd = &dev->calib_data;
 
     float var1 = (1340.0 + 5.0 * cd->range_sw_err) * lookup_table[gas_range][0];
@@ -523,8 +511,7 @@ static uint32_t bme680_convert_gas(bme680_t *dev, uint16_t gas, uint8_t gas_rang
  *
  * @ref Datasheet
  */
-static uint8_t bme680_heater_duration(uint16_t duration)
-{
+static uint8_t bme680_heater_duration(uint16_t duration) {
     uint8_t multiplier = 0;
 
     while (duration > 63)
@@ -540,8 +527,7 @@ static uint8_t bme680_heater_duration(uint16_t duration)
  *
  * @ref Datasheet of BME680
  */
-static uint8_t bme680_heater_resistance(const bme680_t *dev, uint16_t temp)
-{
+static uint8_t bme680_heater_resistance(const bme680_t *dev, uint16_t temp) {
     if (!dev)
         return 0;
 
@@ -573,8 +559,7 @@ static uint8_t bme680_heater_resistance(const bme680_t *dev, uint16_t temp)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id)
-{
+esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id) {
     CHECK_ARG(dev);
     ESP_LOGI(TAG,"Initializing BME680 descriptor");
     if (addr != BME680_I2C_ADDR_0 &&  addr != BME680_I2C_ADDR_1)
@@ -598,13 +583,18 @@ dev->sen.info.sen_id = sen_id;
 dev->sen.info.version = 1;
 dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
 dev->sen.conf.min_period_us = 0;
-dev->sen.info.delay_s_ms = 0;
+dev->sen.status.delay_start_get_ms = 0;
 dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
 dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
 dev->sen.conf.addr = BME680_I2C_ADDR_0;
 dev->sen.conf.period_ms=nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS);
-dev->sen.get_data=bme680_iot_sen_measurement;
 dev->sen.dev=dev;
+dev->sen.reset=bme680_iot_sen_reset;
+dev->sen.reinit=bme680_iot_sen_reinit;
+dev->sen.start_measurement=bme680_iot_sen_start_measurement;
+dev->sen.get_data=bme680_iot_sen_get_data;
+dev->sen.awake=bme680_iot_sen_sleep_mode_awake;
+dev->sen.sleep=bme680_iot_sen_sleep_mode_sleep;
 
 dev->sen.status.initialized = false;
 dev->sen.status.fail_cnt = 0;
@@ -641,15 +631,13 @@ dev->sen.outs[BME680_OUT_GAS_ID].srate=0;
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
 
-esp_err_t bme680_free_desc(bme680_t *dev)
-{
+esp_err_t bme680_free_desc(bme680_t *dev) {
     CHECK_ARG(dev);
 
     return i2c_dev_delete_mutex(&dev->i2c_dev);
 }
 
-esp_err_t bme680_init_sensor(bme680_t *dev)
-{
+esp_err_t bme680_init_sensor(bme680_t *dev) {
     CHECK_ARG(dev);
     ESP_LOGI(TAG,"Initializing BME680 sensor");
 
@@ -734,14 +722,14 @@ esp_err_t bme680_init_sensor(bme680_t *dev)
     CHECK(bme680_set_heater_profile(dev, 0, 320, 150));
     CHECK(bme680_use_heater_profile(dev, 0));
 
+    bme680_get_measurement_duration(dev, &dev->sen.status.delay_m_us);
+    dev->sen.status.delay_m_us=pdTICKS_TO_MS(dev->sen.status.delay_m_us)*1000LL;
     return ESP_OK;
 }
 
-esp_err_t bme680_force_measurement(bme680_t *dev)
-{
+esp_err_t bme680_force_measurement(bme680_t *dev) {
     CHECK_ARG(dev);
-    if (dev->meas_started)
-    {
+    if (dev->meas_started) {
         ESP_LOGE(TAG, "Measurement is already running");
         return ESP_ERR_INVALID_STATE;
     }
@@ -763,8 +751,7 @@ esp_err_t bme680_force_measurement(bme680_t *dev)
  * Timing formulas extracted from BME280 datasheet and test in some
  * experiments. They represent the maximum measurement duration.
  */
-esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration)
-{
+esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration) {
     CHECK_ARG(dev && duration);
 
     *duration = 0; /* Calculate in us */
@@ -807,12 +794,12 @@ esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration)
     // and not for the typical durations and therefore tends to be too long, this
     // should not be a problem. Therefore, only one additional tick used.
     *duration += 1;
-    dev->sen.info.delay_s_ms = *duration;
+    dev->sen.status.delay_start_get_ms = pdTICKS_TO_MS(*duration);
+
     return ESP_OK;
 }
 
-esp_err_t bme680_get_measurement_status(bme680_t *dev)
-{
+esp_err_t bme680_get_measurement_status(bme680_t *dev) {
     CHECK_ARG(dev);
 
     CHECK(read_reg_8(dev, BME680_REG_MEAS_STATUS_0, &dev->meas_status));
@@ -820,8 +807,7 @@ esp_err_t bme680_get_measurement_status(bme680_t *dev)
     return ESP_OK;
 }
 
-esp_err_t bme680_is_measuring(bme680_t *dev, bool *busy)
-{
+esp_err_t bme680_is_measuring(bme680_t *dev, bool *busy) {
     CHECK_ARG(dev && busy);
 
     // if measurement wasn't started, it is of course not measuring
@@ -837,8 +823,7 @@ esp_err_t bme680_is_measuring(bme680_t *dev, bool *busy)
     return ESP_OK;
 }
 
-esp_err_t bme680_get_results_fixed(bme680_t *dev, bme680_values_fixed_t *results)
-{
+esp_err_t bme680_get_results_fixed(bme680_t *dev, bme680_values_fixed_t *results) {
     CHECK_ARG(dev && results);
 
     // fill data structure with invalid values
@@ -876,8 +861,7 @@ esp_err_t bme680_get_results_fixed(bme680_t *dev, bme680_values_fixed_t *results
     return ESP_OK;
 }
 
-esp_err_t bme680_get_results_float(bme680_t *dev, bme680_values_float_t *results)
-{
+esp_err_t bme680_get_results_float(bme680_t *dev, bme680_values_float_t *results) {
     CHECK_ARG(dev && results);
 
     bme680_values_fixed_t fixed;
@@ -891,8 +875,7 @@ esp_err_t bme680_get_results_float(bme680_t *dev, bme680_values_float_t *results
     return ESP_OK;
 }
 
-esp_err_t bme680_measure_fixed(bme680_t *dev, bme680_values_fixed_t *results)
-{
+esp_err_t bme680_measure_fixed(bme680_t *dev, bme680_values_fixed_t *results) {
     CHECK_ARG(dev && results);
 
     uint32_t duration;
@@ -909,8 +892,7 @@ esp_err_t bme680_measure_fixed(bme680_t *dev, bme680_values_fixed_t *results)
     return bme680_get_results_fixed(dev, results);
 }
 
-esp_err_t bme680_measure_float(bme680_t *dev, bme680_values_float_t *results)
-{
+esp_err_t bme680_measure_float(bme680_t *dev, bme680_values_float_t *results) {
     CHECK_ARG(dev && results);
 
     uint32_t duration;
@@ -927,25 +909,8 @@ esp_err_t bme680_measure_float(bme680_t *dev, bme680_values_float_t *results)
     return bme680_get_results_float(dev, results);
 }
 
-esp_err_t bme680_iot_sen_measurement(void *dev) {
-  bme680_t *bme_dev = (bme680_t*) dev;
-  esp_err_t res;
-  res = bme680_force_measurement(bme_dev);
-  ESP_ERROR_CHECK_WITHOUT_ABORT(res);
-  if (res != ESP_OK)
-    ESP_LOGE(TAG, "Could not read BME680 values. error: %d\n", res);
-  else {
-    // passive waiting until measurement results are available
-    vTaskDelay(bme_dev->sen.info.delay_s_ms);
-    // while(!bme680.meas_status)
-  }
-  bme680_values_float_t bme680_values_float;
-  return bme680_get_results_float(bme_dev, &bme680_values_float);
-}
-
 esp_err_t bme680_set_oversampling_rates(bme680_t *dev, bme680_oversampling_rate_t ost,
-        bme680_oversampling_rate_t osp, bme680_oversampling_rate_t osh)
-{
+        bme680_oversampling_rate_t osp, bme680_oversampling_rate_t osh) {
     CHECK_ARG(dev);
 
     bool ost_changed = dev->settings.osr_temperature != ost;
@@ -996,8 +961,7 @@ esp_err_t bme680_set_oversampling_rates(bme680_t *dev, bme680_oversampling_rate_
     return ESP_OK;
 }
 
-esp_err_t bme680_set_filter_size(bme680_t *dev, bme680_filter_size_t size)
-{
+esp_err_t bme680_set_filter_size(bme680_t *dev, bme680_filter_size_t size) {
     CHECK_ARG(dev);
 
     if (dev->settings.filter_size == size)
@@ -1023,8 +987,7 @@ esp_err_t bme680_set_filter_size(bme680_t *dev, bme680_filter_size_t size)
     return ESP_OK;
 }
 
-esp_err_t bme680_set_heater_profile(bme680_t *dev, uint8_t profile, uint16_t temperature, uint16_t duration)
-{
+esp_err_t bme680_set_heater_profile(bme680_t *dev, uint8_t profile, uint16_t temperature, uint16_t duration) {
     CHECK_ARG(dev && profile < BME680_HEATER_PROFILES);
 
     bool temperature_changed = dev->settings.heater_temperature[profile] != temperature;
@@ -1057,8 +1020,7 @@ esp_err_t bme680_set_heater_profile(bme680_t *dev, uint8_t profile, uint16_t tem
     return ESP_OK;
 }
 
-esp_err_t bme680_use_heater_profile(bme680_t *dev, int8_t profile)
-{
+esp_err_t bme680_use_heater_profile(bme680_t *dev, int8_t profile) {
     CHECK_ARG(dev);
     CHECK_ARG(profile >= -1 && profile < BME680_HEATER_PROFILES);
 
@@ -1082,8 +1044,7 @@ esp_err_t bme680_use_heater_profile(bme680_t *dev, int8_t profile)
     return ESP_OK;
 }
 
-esp_err_t bme680_set_ambient_temperature(bme680_t *dev, int16_t ambient)
-{
+esp_err_t bme680_set_ambient_temperature(bme680_t *dev, int16_t ambient) {
     CHECK_ARG(dev);
 
     if (dev->settings.ambient_temperature == ambient)
@@ -1106,4 +1067,39 @@ esp_err_t bme680_set_ambient_temperature(bme680_t *dev, int16_t ambient)
     ESP_LOGD(TAG, "Setting heater ambient temperature done: ambient=%d", dev->settings.ambient_temperature);
 
     return ESP_OK;
+}
+
+esp_err_t bme680_iot_sen_start_measurement(void *dev) {
+  return bme680_force_measurement((bme680_t*) dev);
+}
+
+esp_err_t bme680_iot_sen_get_data(void *dev) {
+  bme680_values_float_t bme680_values_float;
+  return bme680_get_results_float((bme680_t*) dev, &bme680_values_float);
+}
+
+esp_err_t bme680_iot_sen_sleep_mode_awake(void *dev) {
+  bme680_t* dev_ = (bme680_t*) dev;
+  return ESP_OK;
+  // if((dev_->settings.enable_reg & TSL2591_ALS_ON) && (dev_->settings.enable_reg & TSL2591_POWER_ON))
+  //   return bme680_basic_enable(dev_);
+  // else
+  //   return bme680_basic_disable(dev_);
+}
+
+esp_err_t bme680_iot_sen_sleep_mode_sleep(void *dev) {
+  bme680_t* dev_ = (bme680_t*) dev;
+  return ESP_OK;
+  // if((dev_->settings.enable_reg & TSL2591_ALS_ON) && (dev_->settings.enable_reg & TSL2591_POWER_ON))
+  //   return bme680_basic_enable(dev_);
+  // else
+  //   return bme680_basic_disable(dev_);
+}
+
+esp_err_t bme680_iot_sen_reset(void *dev) {
+  return ESP_OK;
+}
+
+esp_err_t bme680_iot_sen_reinit(void *dev) {
+  return ESP_OK;
 }
