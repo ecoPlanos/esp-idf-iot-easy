@@ -75,7 +75,7 @@ static void sw_trigger_task(void* arg) {
             // sen->timestamp = current_timestamp;
             current_trig = current_timestamp;
             // sen->outs[0].trig.filtered_count = 0;
-            current_filter_cnt = 0;
+            current_filter_cnt = 1;
           }
         } else {
           // sen->outs[0].trig.filtered_count++;
