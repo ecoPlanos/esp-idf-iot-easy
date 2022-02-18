@@ -85,8 +85,10 @@ static void sw_trigger_task(void* arg) {
         if((current_timestamp - current_trig) > sen->conf.min_period_us) {
           detect_running = false;
           // sen->outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
-          sen->outs[0].m_raw = (uint32_t)(current_timestamp - current_trig);
-          sen->outs[0].trig_cnt = current_filter_cnt;
+          // sen->outs[0].m_raw = (uint32_t)(current_timestamp - current_trig);
+          // sen->outs[0].trig_cnt = current_filter_cnt;
+          sen->outs[0].m_raw = current_filter_cnt;
+          sen->outs[0].trig_cnt = (uint32_t)(current_timestamp - current_trig);
           sen->timestamp = current_trig;
           // ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
           // ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);

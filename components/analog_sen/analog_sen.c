@@ -36,7 +36,7 @@ const uint32_t atts[ANALOG_SEN_ATTS_NR] = {ADC_ATTEN_DB_0, ADC_ATTEN_DB_2_5, ADC
 const uint32_t atts_max_values[ANALOG_SEN_ATTS_NR] = {4096,4096,4096,4096};
 const int32_t atts_min_values[ANALOG_SEN_ATTS_NR] = {0,0,0,0};
 const float atts_th_h[ANALOG_SEN_ATTS_NR] = {0.85,0.85,0.85,0.85};
-const float atts_th_l[ANALOG_SEN_ATTS_NR] = {0.03,0.03,0.03,0.03};
+const float atts_th_l[ANALOG_SEN_ATTS_NR] = {0.25,0.25,0.25,0.25};
 
 static void check_efuse(void)
 {
@@ -140,8 +140,10 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     dev->sen.outs[0].m_raw=0;
     dev->sen.outs[0].srate=0;
     // dev->sen.outs[0].timestamp=0;
-    ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[0].atts_agc, SEN_AGC_TYPE_ATT, ANALOG_SEN_ATTS_NR, atts, atts_max_values, atts_min_values, atts_th_h, atts_th_l));
-    dev->sen.outs[0].atts_agc.state = true;
+    ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[0].atts_agc, SEN_AGC_TYPE_ATT, ANALOG_SEN_ATTS_NR, \
+                    atts, atts_max_values, atts_min_values, atts_th_h, atts_th_l));
+    // dev->sen.outs[0].gains_agc.state = false;
+    dev->sen.outs[0].itimes_agc.state = false;
     dev->sen.outs[0].atts_agc.idx=CONFIG_ANALOG_SEN_DEFAULT_ATT;
 
     return ESP_OK;
@@ -165,7 +167,6 @@ esp_err_t analog_sen_init(analog_sen_t *dev) {
     dev->adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
     esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, dev->sen.outs[0].atts_agc.idx, ADC_WIDTH_BIT_12, DEFAULT_VREF, dev->adc_chars);
     print_char_val_type(val_type);
-
     dev->sen.status.initialized=true;
     dev->sen.status.status_code = SEN_STATUS_OK;
 
@@ -177,6 +178,7 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
     // uint64_t timestamp;
     CHECK_ARG(dev);
 
+    struct timeval tv;
     sen_agc_change_type_t agc_change;
     uint32_t adc_reading_mean = 0;
     if (dev->adc_unit == ADC_UNIT_1) {
@@ -196,9 +198,16 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
           ESP_LOGI(TAG,"Attenuation too low. Adjusting att UP...");
           analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx+1);
         }
-      }
-      else if(agc_change==SEN_AGC_CHANGE_DOWN)
-      {
+        else {
+          ESP_LOGW(TAG,"Sensor saturated!");
+          ESP_LOGD(TAG,"dev->sen.outs[0].atts_agc.idx: %u",dev->sen.outs[0].atts_agc.idx);
+        	gettimeofday(&tv, NULL);
+          dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+          dev->sen.outs[0].m_raw = adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
+          //TODO: add flag to data to indicate saturation!
+          return ESP_OK;
+        }
+      } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
         if(dev->sen.outs[0].atts_agc.idx > 0)
         {
           ESP_LOGI(TAG,"Attenuation too high. Adjusting att DOWN...");
@@ -206,8 +215,8 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
         }
         else
         {
-          ESP_LOGW(TAG,"Sensor saturated!");
-          ESP_LOGD(TAG,"dev->sen.outs[0].atts_agc.idx: %u",dev->sen.outs[0].atts_agc.idx);
+          ESP_LOGI(TAG,"Reached minimum attenuation!");
+          break;
         }
       }
       if (dev->adc_unit == ADC_UNIT_1) {
@@ -234,7 +243,6 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
 
     // else
     // {
-    struct timeval tv;
   	gettimeofday(&tv, NULL);
   	// timestamp = (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL)) ;
   	// timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
