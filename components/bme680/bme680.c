@@ -601,33 +601,34 @@ dev->sen.status.fail_cnt = 0;
 dev->sen.status.fail_time = 0;
 
 dev->sen.outs[BME680_OUT_TEMP_ID].out_id=BME680_OUT_TEMP_ID;
-dev->sen.outs[BME680_OUT_TEMP_ID].out_type = SEN_TYPE_INTERNAL_TEMPERATURE;
+dev->sen.outs[BME680_OUT_TEMP_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
 dev->sen.outs[BME680_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
 dev->sen.outs[BME680_OUT_TEMP_ID].m_raw=0;
 dev->sen.outs[BME680_OUT_TEMP_ID].temperature=0.0;
-dev->sen.outs[BME680_OUT_TEMP_ID].srate=0;
+// dev->sen.outs[BME680_OUT_TEMP_ID].conf.srate=0;
 
 dev->sen.outs[BME680_OUT_PRESSURE_ID].out_id=BME680_OUT_PRESSURE_ID;
-dev->sen.outs[BME680_OUT_PRESSURE_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
+dev->sen.outs[BME680_OUT_PRESSURE_ID].out_type=SEN_TYPE_PRESSURE;
 dev->sen.outs[BME680_OUT_PRESSURE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
 dev->sen.outs[BME680_OUT_PRESSURE_ID].m_raw=0;
 dev->sen.outs[BME680_OUT_PRESSURE_ID].pressure=0.0;
-dev->sen.outs[BME680_OUT_PRESSURE_ID].srate=0;
+// dev->sen.outs[BME680_OUT_PRESSURE_ID].conf.srate=0;
 
 dev->sen.outs[BME680_OUT_RH_ID].out_id=BME680_OUT_RH_ID;
-dev->sen.outs[BME680_OUT_RH_ID].out_type = SEN_TYPE_PRESSURE;
+dev->sen.outs[BME680_OUT_RH_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
 dev->sen.outs[BME680_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
 dev->sen.outs[BME680_OUT_RH_ID].m_raw=0;
 dev->sen.outs[BME680_OUT_RH_ID].relative_humidity=0.0;
-dev->sen.outs[BME680_OUT_RH_ID].srate=0;
+// dev->sen.outs[BME680_OUT_RH_ID].conf.srate=0;
 
 dev->sen.outs[BME680_OUT_GAS_ID].out_id=BME680_OUT_GAS_ID;
-dev->sen.outs[BME680_OUT_GAS_ID].out_type = SEN_TYPE_GAS_RESISTANCE;
+dev->sen.outs[BME680_OUT_GAS_ID].out_type=SEN_TYPE_GAS_RESISTANCE;
 dev->sen.outs[BME680_OUT_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
 dev->sen.outs[BME680_OUT_GAS_ID].m_raw=0;
 dev->sen.outs[BME680_OUT_GAS_ID].resistance=0.0;
-dev->sen.outs[BME680_OUT_GAS_ID].srate=0;
+// dev->sen.outs[BME680_OUT_GAS_ID].conf.srate=0;
 
+dev->sen.conf.srate=0;
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
 

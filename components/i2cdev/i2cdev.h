@@ -147,6 +147,16 @@ esp_err_t i2c_dev_read(const i2c_dev_t *dev, const void *out_data,
         size_t out_size, void *in_data, size_t in_size);
 
 /**
+ * @brief Read from slave device
+ *
+ * Issue a single read without results
+ *
+ * @param dev Device descriptor
+ * @return ESP_OK on success
+ */
+esp_err_t i2c_dev_read_byte(const i2c_dev_t *dev);
+
+/**
  * @brief Write to slave device
  *
  * Write \p out_size bytes from \p out_data to slave into \p out_reg register address.

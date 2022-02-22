@@ -190,7 +190,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.outs[0].out_val_type=SEN_OUT_VAL_TYPE_SEN_SWITCH;
   // dev->sen.outs[0].trig.filtered_count=0;
   dev->sen.outs[0].m_raw=0;
-  dev->sen.outs[0].srate=0;
+  dev->sen.conf.srate=0;
 
   gpio_config_t io_conf;
   io_conf.intr_type = GPIO_INTR_ANYEDGE;

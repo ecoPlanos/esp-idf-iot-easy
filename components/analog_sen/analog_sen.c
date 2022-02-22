@@ -97,7 +97,7 @@ static inline analog_sen_att_t idx2att(uint8_t idx) {
 
 // Initialization.
 esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel, adc_unit_t unit, \
-                                uint16_t samples_filter, uint32_t period_ms, \
+                                uint8_t samples_filter, uint32_t period_ms, \
                                 uint16_t sen_id, char sen_name[], \
                                 void *calc_processed_func) {
     CHECK_ARG(dev && calc_processed_func);
@@ -115,7 +115,7 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     // dev->sen.conf.period_ms=nearest_prime(CONFIG_ANALOG_DEFAULT_PERIOD_MS);
     dev->sen.conf.period_ms=nearest_prime(period_ms);
     dev->sen.conf.min_period_us = 1000;
-    dev->sen.status.delay_start_get_ms = 0;
+    dev->sen.status.delay_start_get_ms = samples_filter*5;
     dev->sen.info.out_nr = 1;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.timestamp=0;
@@ -138,7 +138,7 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     dev->sen.outs[0].gpio=analog_channel;
     dev->sen.outs[0].bit_nr=16;
     dev->sen.outs[0].m_raw=0;
-    dev->sen.outs[0].srate=0;
+    dev->sen.conf.srate=0;
     // dev->sen.outs[0].timestamp=0;
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[0].atts_agc, SEN_AGC_TYPE_ATT, ANALOG_SEN_ATTS_NR, \
                     atts, atts_max_values, atts_min_values, atts_th_h, atts_th_l));
@@ -228,14 +228,27 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
       }
     }
     //Multisampling
-    for (uint16_t i = 0; i < dev->sen.conf.samples_filter; i++) {
+    for (uint8_t i = 0; i < dev->sen.conf.samples_filter; i++) {
+      uint16_t adc_val;
+      uint8_t zero_count=0;
         if (dev->adc_unit == ADC_UNIT_1) {
-            adc_reading_mean += adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
+          adc_val = adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
+          if(adc_val > 0)
+            adc_reading_mean += adc_val;
+          else{
+            i--;
+            zero_count++;
+            if(zero_count == dev->sen.conf.samples_filter) {
+              adc_reading_mean = 0;
+              break;
+            }
+          }
         } else {
             int raw;
             adc2_get_raw((adc2_channel_t)dev->sen.outs[0].gpio, ADC_WIDTH_BIT_12, &raw);
             adc_reading_mean += raw;
         }
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     adc_reading_mean /= dev->sen.conf.samples_filter;
 

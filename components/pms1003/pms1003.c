@@ -282,7 +282,7 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     CHECK_ARG(dev);
     dev->conf.delay_after_awake_ms = (uint32_t) CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS;
     dev->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
-    dev->sen.status.sleeping = false;
+    // dev->sen.status.sleeping = false;
     dev->status.mode = PMS1003_DATA_MODE_PASSIVE;
     dev->uart_dev.port = port;
     dev->uart_dev.tx_io_num = tx_gpio;
@@ -334,84 +334,85 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ID;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_type = SEN_TYPE_PM2_5_CON_UNIT;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_id=PMS1003_OUT_PM10_CON_UNIT_ID;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_type = SEN_TYPE_PM10_CON_UNIT;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_PM1_0_CON_UNIT_ATMOSPHE;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_PM2_5_CON_UNIT_ATMOSPHE;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_CON_UNIT_ATMOSPHE;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_3_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_0_3_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_5_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_0_5_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_1_0_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_1_0_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_2_5_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_2_5_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_5_0_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_5_0_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_10_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_10_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].dust=0.0;
-    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].srate = 0;
+    // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].conf.srate = 0;
+    dev->sen.conf.srate = 0;
 
     return uart_dev_create_mutex(&dev->uart_dev);
 }
@@ -548,7 +549,7 @@ esp_err_t pms1003_set_sleep_mode(pms1003_t *dev, pms1003_sleep_type_t sleep_mode
   CHECK(get_set_sleep_mode_cmd(cmd, sleep_mode));
   CHECK(exec_cmd(dev,cmd,0));
   dev->status.sleep_mode = sleep_mode;
-  dev->sen.status.sleeping = (sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
+  // dev->sen.status.sleeping = (sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
   return ESP_OK;
 }
 
@@ -564,7 +565,7 @@ esp_err_t pms1003_toggle_sleep_mode(pms1003_t *dev) {
   }
 
   CHECK(exec_cmd(dev,cmd,0));
-  dev->sen.status.sleeping = (dev->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
+  // dev->sen.status.sleeping = (dev->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
   return ESP_OK;
 }
 
@@ -661,18 +662,19 @@ esp_err_t pms1003_iot_sen_toggle_sleep_mode(void *dev) {
   }
 
   CHECK(exec_cmd(dev,cmd,0));
-  dev_->sen.status.sleeping = (dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
+  // dev_->sen.status.sleeping = (dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
   return ESP_OK;
 }
 
 esp_err_t pms1003_iot_sen_sleep_mode_awake(void *dev) {
   uint8_t cmd[7];
   pms1003_t *dev_ = (pms1003_t *)dev;
-  if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) || dev_->sen.status.sleeping) {
+  // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) || dev_->sen.status.sleeping) {
+  if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) {
     CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_AWAKE));
     CHECK(exec_cmd(dev_,cmd,0));
     dev_->status.sleep_mode = PMS1003_SLEEP_MODE_AWAKE;
-    dev_->sen.status.sleeping = false;
+    // dev_->sen.status.sleeping = false;
   }
   return ESP_OK;
 }
@@ -680,11 +682,12 @@ esp_err_t pms1003_iot_sen_sleep_mode_awake(void *dev) {
 esp_err_t pms1003_iot_sen_sleep_mode_sleep(void *dev) {
   uint8_t cmd[7];
   pms1003_t *dev_ = (pms1003_t *)dev;
-  if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) || (!dev_->sen.status.sleeping)) {
+  // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) || (!dev_->sen.status.sleeping)) {
+  if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP))) {
     CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_SLEEP));
     CHECK(exec_cmd(dev_,cmd,0));
     dev_->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
-    dev_->sen.status.sleeping = false;
+    // dev_->sen.status.sleeping = false;
   }
   return ESP_OK;
 }

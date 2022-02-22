@@ -155,8 +155,8 @@ static inline esp_err_t read_enable_register(tsl2591_t *dev, uint8_t *value) {
   ret = read_register(dev, TSL2591_REG_ENABLE, value);
   if(ret==ESP_OK) {
     dev->settings.enable_reg = *value;
-    dev->sen.status.sleeping = ((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
-    ESP_LOGD(TAG, "Sleeping: %u",dev->sen.status.sleeping);
+    // dev->sen.status.sleeping = ((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
+    // ESP_LOGD(TAG, "Sleeping: %u",dev->sen.status.sleeping);
     ESP_LOGD(TAG, "enable reg: %u",dev->settings.enable_reg);
   } else ESP_LOGE(TAG, "Couldn't get enable register!");
   return ret;
@@ -335,7 +335,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.outs[TSL2591_OUT_CH0_ID].bit_nr=16;
     dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw=0;
     dev->sen.outs[TSL2591_OUT_CH0_ID].light=0.0;
-    dev->sen.outs[TSL2591_OUT_CH0_ID].srate=0;
+    // dev->sen.outs[TSL2591_OUT_CH0_ID].conf.srate=0;
     // dev->sen.outs[TSL2591_OUT_CH0_ID].timestamp=0;
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc, SEN_AGC_TYPE_GAIN, TSL2591_GAINS_NR, gains, gains_max_values,gains_min_values,gains_th_h,gains_th_l));
     // dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.state = true;
@@ -349,7 +349,8 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.outs[TSL2591_OUT_CH1_ID].bit_nr=16;
     dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw=0;
     dev->sen.outs[TSL2591_OUT_CH1_ID].light=0.0;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].srate=0;
+    // dev->sen.outs[TSL2591_OUT_CH1_ID].conf.srate=0;
+    dev->sen.conf.srate=0;
     // dev->sen.outs[TSL2591_OUT_CH1_ID].timestamp=0;
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc, SEN_AGC_TYPE_GAIN,TSL2591_GAINS_NR, gains, gains_max_values,gains_min_values,gains_th_h,gains_th_l));
     // dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc.state = true;
@@ -613,7 +614,7 @@ esp_err_t tsl2591_set_power_status(tsl2591_t *dev, tsl2591_power_status_t power_
     I2C_DEV_CHECK(&dev->i2c_dev,
         write_enable_register(dev, (dev->settings.enable_reg & ~TSL2591_POWER_ON) | power_status));
     dev->settings.enable_reg = (dev->settings.enable_reg & ~TSL2591_POWER_ON) | power_status;
-    dev->sen.status.sleeping = ((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
+    // dev->sen.status.sleeping = ((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
 
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
@@ -636,7 +637,7 @@ esp_err_t tsl2591_set_als_status(tsl2591_t *dev, tsl2591_als_status_t als_status
     I2C_DEV_CHECK(&dev->i2c_dev,
         write_enable_register(dev, (dev->settings.enable_reg & ~TSL2591_ALS_ON) | als_status));
     dev->settings.enable_reg = (dev->settings.enable_reg & ~TSL2591_ALS_ON) | als_status;
-    dev->sen.status.sleeping = !((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
+    // dev->sen.status.sleeping = !((dev->settings.enable_reg & TSL2591_POWER_ON) && (dev->settings.enable_reg & TSL2591_ALS_ON));
 
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
@@ -1020,7 +1021,7 @@ esp_err_t tsl2591_basic_enable(tsl2591_t *dev) {
   I2C_DEV_CHECK(&dev->i2c_dev,
       write_enable_register(dev, dev->settings.enable_reg | TSL2591_ALS_ON | TSL2591_POWER_ON));
   dev->settings.enable_reg = dev->settings.enable_reg | TSL2591_ALS_ON | TSL2591_POWER_ON;
-  dev->sen.status.sleeping = false;
+  // dev->sen.status.sleeping = false;
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
   // ESP_LOGD(TAG,"Sleeping for %u ms",int_times[dev->settings.control_reg & 0x07]+10);
@@ -1039,7 +1040,7 @@ esp_err_t tsl2591_basic_disable(tsl2591_t *dev) {
   I2C_DEV_CHECK(&dev->i2c_dev,
     write_enable_register(dev, dev->settings.enable_reg & ~TSL2591_ALS_ON & ~TSL2591_POWER_ON));
     dev->settings.enable_reg = dev->settings.enable_reg & ~TSL2591_ALS_ON & ~TSL2591_POWER_ON;
-    dev->sen.status.sleeping = true;
+    // dev->sen.status.sleeping = true;
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
     return ESP_OK;
