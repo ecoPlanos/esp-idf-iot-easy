@@ -44,7 +44,7 @@
 #include <string.h>
 #include "sht85.h"
 
-#define I2C_FREQ_HZ 100000 // 100KHz
+#define I2C_FREQ_HZ 1000000 // 1MHz
 
 static const char *TAG = "sht85";
 

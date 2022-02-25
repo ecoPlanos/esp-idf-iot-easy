@@ -40,7 +40,8 @@
 #include <sys/time.h>
 #include "tsl2591.h"
 
-#define I2C_FREQ_HZ 80000 // 80kHz
+#define I2C_FREQ_HZ 400000 // 400kHz
+// #define I2C_FREQ_HZ 100000 // 100kHz
 
 static const char *TAG = "tsl2591";
 
@@ -483,7 +484,8 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
     agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
     agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
     ESP_LOGD(TAG,"agc_change: %u",agc_change);
-    while(agc_change != SEN_AGC_CHANGE_NOP) {
+    // while(agc_change != SEN_AGC_CHANGE_NOP) {
+    if(agc_change != SEN_AGC_CHANGE_NOP) {
       ESP_LOGI(TAG,"agc_change: %u",agc_change);
       if(agc_change==SEN_AGC_CHANGE_UP)
       {
@@ -496,9 +498,10 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
           agc_change = 0;
           agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
           agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
+          return ESP_ERR_INVALID_STATE;
         } else {
           ESP_LOGI(TAG,"Reached maximum gain!");
-          break;
+          // break;
         }
       } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
         if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx > 0)
@@ -510,6 +513,7 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
           agc_change = 0;
           agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
           agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
+          return ESP_ERR_INVALID_STATE;
         }
         else
         {
@@ -521,7 +525,7 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
           dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
           tsl2591_basic_disable(dev);
           //TODO: add flag to data to indicate saturation!
-          return ESP_OK;
+          // return ESP_OK;
         }
       }
     }

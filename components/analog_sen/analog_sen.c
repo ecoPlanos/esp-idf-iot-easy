@@ -189,7 +189,8 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
         agc_change = sensor_out_agc_change(dev->sen.outs[0], raw);
     }
     // uint16_t adc_reading = 0;
-    while(agc_change !=  SEN_AGC_CHANGE_NOP) {
+    // while(agc_change !=  SEN_AGC_CHANGE_NOP) {
+    if(agc_change !=  SEN_AGC_CHANGE_NOP) {
       ESP_LOGI(TAG,"agc_change: %u",agc_change);
       if(agc_change==SEN_AGC_CHANGE_UP)
       {
@@ -197,6 +198,7 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
         {
           ESP_LOGI(TAG,"Attenuation too low. Adjusting att UP...");
           analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx+1);
+          return ESP_ERR_INVALID_STATE;
         }
         else {
           ESP_LOGW(TAG,"Sensor saturated!");
@@ -205,27 +207,28 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
           dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
           dev->sen.outs[0].m_raw = adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
           //TODO: add flag to data to indicate saturation!
-          return ESP_OK;
+          // return ESP_OK;
         }
       } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
         if(dev->sen.outs[0].atts_agc.idx > 0)
         {
           ESP_LOGI(TAG,"Attenuation too high. Adjusting att DOWN...");
           analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx-1);
+          return ESP_ERR_INVALID_STATE;
         }
         else
         {
           ESP_LOGI(TAG,"Reached minimum attenuation!");
-          break;
+          // break;
         }
       }
-      if (dev->adc_unit == ADC_UNIT_1) {
-          agc_change = sensor_out_agc_change(dev->sen.outs[0], (uint32_t)adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio));
-      } else {
-          int raw;
-          adc2_get_raw((adc2_channel_t)dev->sen.outs[0].gpio, ADC_WIDTH_BIT_12, &raw);
-          agc_change = sensor_out_agc_change(dev->sen.outs[0], raw);
-      }
+      // if (dev->adc_unit == ADC_UNIT_1) {
+      //     agc_change = sensor_out_agc_change(dev->sen.outs[0], (uint32_t)adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio));
+      // } else {
+      //     int raw;
+      //     adc2_get_raw((adc2_channel_t)dev->sen.outs[0].gpio, ADC_WIDTH_BIT_12, &raw);
+      //     agc_change = sensor_out_agc_change(dev->sen.outs[0], raw);
+      // }
     }
     //Multisampling
     for (uint8_t i = 0; i < dev->sen.conf.samples_filter; i++) {
@@ -270,8 +273,7 @@ esp_err_t analog_sen_get_voltage(analog_sen_t *dev, uint16_t adc_reading, uint16
     //TODO: check voltage dividers
     *voltage = esp_adc_cal_raw_to_voltage(adc_reading, dev->adc_chars);
     dev->sen.outs[0].voltage=(float)*voltage;
-    ESP_LOGI(TAG, "Voltage: %u", *voltage);
-    ESP_LOGI(TAG, "Voltage: %f", dev->sen.outs[0].voltage);
+    ESP_LOGI(TAG, "Voltage: %u mV", *voltage);
     return ESP_OK;
 }
 
