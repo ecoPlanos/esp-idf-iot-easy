@@ -208,8 +208,8 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
           ESP_LOGD(TAG,"dev->sen.outs[0].atts_agc.idx: %u",dev->sen.outs[0].atts_agc.idx);
         	// gettimeofday(&tv, NULL);
           // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-          dev->sen.esp_timestamp = esp_timer_get_time();
-          dev->sen.outs[0].m_raw = adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
+          // dev->sen.esp_timestamp = esp_timer_get_time();
+          // dev->sen.outs[0].m_raw = adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
           //TODO: add flag to data to indicate saturation!
           // return ESP_OK;
         }
@@ -235,6 +235,7 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
       // }
     }
     //Multisampling
+    int64_t m_mon = esp_timer_get_time();
     for (uint8_t i = 0; i < dev->sen.conf.samples_filter; i++) {
       uint16_t adc_val;
       uint8_t zero_count=0;
@@ -258,6 +259,9 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
         vTaskDelay(pdMS_TO_TICKS(5));
     }
     adc_reading_mean /= dev->sen.conf.samples_filter;
+    dev->sen.esp_timestamp = esp_timer_get_time();
+    dev->sen.esp_timestamp = dev->sen.esp_timestamp-((dev->sen.esp_timestamp - m_mon)/2);
+    dev->sen.outs[0].m_raw = adc_reading_mean;
 
     ESP_LOGD(TAG,"adc_reading_mean: %u", adc_reading_mean);
 
@@ -267,8 +271,6 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
   	// timestamp = (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL)) ;
   	// timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
     // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-    dev->sen.esp_timestamp = esp_timer_get_time();
-    dev->sen.outs[0].m_raw = adc_reading_mean;
 
     return ESP_OK;
 }
