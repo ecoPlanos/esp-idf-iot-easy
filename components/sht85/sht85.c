@@ -40,11 +40,11 @@
 #include <freertos/task.h>
 #include <esp_idf_lib_helpers.h>
 #include <esp_timer.h>
-#include <sys/time.h>
 #include <string.h>
 #include "sht85.h"
 
 #define I2C_FREQ_HZ 1000000 // 1MHz
+// #define I2C_FREQ_HZ 100000 // 100KHz
 
 static const char *TAG = "sht85";
 
@@ -221,12 +221,12 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 0;
-    dev->sen.status.delay_start_get_ms = 2;
+    dev->sen.status.delay_start_get_us = 2000;
     dev->sen.info.out_nr = 2; //temperature, RH
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.addr = SHT85_I2C_ADDRESS;
     dev->sen.conf.period_ms = nearest_prime(CONFIG_SHT85_DEFAULT_PERIOD_MS);
-    dev->sen.conf.delay_after_awake_ms=2;
+    dev->sen.conf.delay_after_awake_us=2000;
     dev->sen.dev=dev;
     dev->sen.reset=sht85_iot_sen_reset;
     dev->sen.reinit=sht85_iot_sen_reinit;
@@ -269,7 +269,7 @@ esp_err_t sht85_init(sht85_t *dev) {
 
   dev->repeatability = SINGLE_MEAS_HIGH;
   dev->heater = SHT85_HEATER_OFF;
-  dev->sen.status.delay_start_get_ms=get_duration_ms(dev);
+  dev->sen.status.delay_start_get_us=get_duration_ms(dev)*1000;
 
   ret = sht85_reset(dev);
   if(ret != ESP_OK) {
@@ -304,7 +304,7 @@ esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity) {
   CHECK_ARG(dev && (temperature || humidity));
 
   sht85_raw_data_t raw;
-  gettimeofday(&tv, NULL);
+  // gettimeofday(&tv, NULL);
   CHECK(send_cmd(dev, get_single_shot_meas_cmd(dev)));
   vTaskDelay(pdMS_TO_TICKS(2));
 
@@ -316,13 +316,13 @@ esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity) {
   vTaskDelay(pdMS_TO_TICKS(2));
 
   I2C_DEV_CHECK(&dev->i2c_dev, read_res(dev, raw));
+  dev->sen.esp_timestamp = esp_timer_get_time();
 
   dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw = (raw[0]<<8) | raw[1];
   dev->sen.outs[SHT85_OUT_RH_ID].m_raw = (raw[3]<<8) | raw[4];
   dev->sen.outs[SHT85_OUT_TEMP_ID].temperature = *temperature;
   dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity = *humidity;
   CHECK(sht85_compute_values(dev, raw, temperature, humidity));
-  dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
   ESP_LOGD(TAG, "Temp raw: %u",dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw);
   ESP_LOGD(TAG, "RH raw: %u",dev->sen.outs[SHT85_OUT_RH_ID].m_raw);
   ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SHT85_OUT_TEMP_ID].temperature);
@@ -377,8 +377,9 @@ esp_err_t sht85_get_raw_data(sht85_t *dev, sht85_raw_data_t raw) {
     dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw = (raw[0]<<8) | raw[1];
     dev->sen.outs[SHT85_OUT_RH_ID].m_raw = (raw[3]<<8) | raw[4];
     dev->meas_started = false;
-    gettimeofday(&tv, NULL);
-    dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+    // gettimeofday(&tv, NULL);
+    // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+    dev->sen.esp_timestamp = esp_timer_get_time();
     ESP_LOGD(TAG, "raw[0]: %u,raw[1]: %u,raw[2]: %u,raw[3]: %u,raw[4]: %u,raw[5]: %u",raw[0],raw[1],raw[2],raw[3],raw[4],raw[5]);
     ESP_LOGD(TAG, "Temp raw: %u",dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw);
     ESP_LOGD(TAG, "RH raw: %u",dev->sen.outs[SHT85_OUT_RH_ID].m_raw);

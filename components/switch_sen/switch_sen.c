@@ -21,7 +21,7 @@
 #include <esp_idf_lib_helpers.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
+#include <esp_timer.h>
 #include "switch_sen.h"
 
 static const char *TAG = "switch_sen";
@@ -49,8 +49,7 @@ static void sw_trigger_task(void* arg) {
   sensor_t *sen = (sensor_t *)arg;
   // uint16_t sen_id;
   bool level, detect_running = false;
-  uint64_t current_timestamp;
-  uint64_t current_trig = 0;
+  int64_t current_timestamp,current_trig = 0;
   uint32_t current_filter_cnt = 0;
   struct timeval now;
   uint8_t io_num;
@@ -59,10 +58,11 @@ static void sw_trigger_task(void* arg) {
     // if(xQueueReceive(gpio_evt_queue, &sen_id, portMAX_DELAY)) {
     // if(xQueueReceive(gpio_evt_queue, NULL, portMAX_DELAY)) {
     if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-      gettimeofday(&now,NULL);
+      // gettimeofday(&now,NULL);
       level = gpio_get_level(sen->outs[0].gpio);
       // ESP_LOGD(TAG, "Sensor %s (GPIO_%u) interrupt, val: %d\n", sen->info.name, io_num, level);
-      current_timestamp = (now.tv_sec * 1000000LL + now.tv_usec);
+      // current_timestamp = (now.tv_sec * 1000000LL + now.tv_usec);
+      current_timestamp = esp_timer_get_time();
 
       if((sen->outs[0].out_trigger_dir == SEN_OUT_TRIGGER_FE) ^ level) {
         if((current_timestamp - current_trig) > sen->conf.min_period_us) {
@@ -89,7 +89,7 @@ static void sw_trigger_task(void* arg) {
           // sen->outs[0].trig_cnt = current_filter_cnt;
           sen->outs[0].m_raw = current_filter_cnt;
           sen->outs[0].trig_cnt = (uint32_t)(current_timestamp - current_trig);
-          sen->timestamp = current_trig;
+          sen->esp_timestamp = current_trig;
           // ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
           // ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);
           ESP_LOGI(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].m_raw);
@@ -170,7 +170,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.info.version = 1;
   dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL;
   dev->sen.conf.min_period_us = min_period_us;
-  dev->sen.status.delay_start_get_ms = 0;
+  dev->sen.status.delay_start_get_us = 0;
   dev->sen.info.out_nr = 1;
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
   dev->sen.conf.addr = 0;

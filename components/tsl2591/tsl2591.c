@@ -36,12 +36,13 @@
 #include <freertos/task.h>
 #include <esp_log.h>
 #include <esp_idf_lib_helpers.h>
+#include <esp_timer.h>
 #include <string.h>
-#include <sys/time.h>
 #include "tsl2591.h"
 
 #define I2C_FREQ_HZ 400000 // 400kHz
 // #define I2C_FREQ_HZ 100000 // 100kHz
+// #define I2C_FREQ_HZ 80000 // 80kHz
 
 static const char *TAG = "tsl2591";
 
@@ -105,8 +106,8 @@ static const char *TAG = "tsl2591";
 const uint32_t gains[TSL2591_GAINS_NR] = {1,25,428,9876};
 const uint32_t gains_max_values[TSL2591_GAINS_NR] = {65535,65535,65535,65535};
 const int32_t gains_min_values[TSL2591_GAINS_NR] = {0,0,0,0};
-const float gains_th_h[TSL2591_GAINS_NR] = {0.90,0.90,0.90,0.90};
-const float gains_th_l[TSL2591_GAINS_NR] = {0.03,0.03,0.03,0.03};
+const float gains_th_h[TSL2591_GAINS_NR] = {0.93,0.93,0.93,0.93};
+const float gains_th_l[TSL2591_GAINS_NR] = {0.02,0.02,0.02,0.02};
 const uint32_t int_times[TSL2591_INTEGRATION_TIMES_NR] = {120,220,320,420,520,620};
 const uint32_t itimes_max_values[TSL2591_INTEGRATION_TIMES_NR] = {37888,65535,65535,65535,65535,65535};
 const int32_t itimes_min_values[TSL2591_INTEGRATION_TIMES_NR] = {0,0,0,0,0,0};
@@ -198,7 +199,7 @@ static inline esp_err_t read_control_register(tsl2591_t *dev, uint8_t *value) {
         i_idx=0;
       break;
     }
-    dev->sen.conf.delay_after_awake_ms = int_times[i_idx];
+    dev->sen.conf.delay_after_awake_us = int_times[i_idx]*1000;
     dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
     dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
@@ -311,7 +312,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 110000;
-    dev->sen.status.delay_start_get_ms = 620;
+    dev->sen.status.delay_start_get_us = 620000;
     dev->sen.info.out_nr = 2; //channel 0 (Full spectrum) and channel 1 (IR)
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.addr = TSL2591_I2C_ADDR;
@@ -460,7 +461,7 @@ static inline void tsl2591_get_ch_data(tsl2591_t *dev, uint16_t *channel0, uint1
 
 // Measure.
 esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1) {
-    uint64_t timestamp;
+    int64_t timestamp;
     struct timeval tv;
     CHECK_ARG(dev && channel0 &&  channel1);
     if((dev->settings.enable_reg & (TSL2591_POWER_ON | TSL2591_ALS_ON)) != (TSL2591_POWER_ON | TSL2591_ALS_ON))
@@ -478,12 +479,12 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
   	// timestamp = (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL)) ;
   	// timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
     // timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+    timestamp = esp_timer_get_time();
     sen_agc_change_type_t agc_change = 0;
     ESP_LOGD(TAG,"channel0: %u",*channel0);
     ESP_LOGD(TAG,"channel1: %u",*channel1);
-    agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
-    agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
-    ESP_LOGD(TAG,"agc_change: %u",agc_change);
+    agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
+    agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
     // while(agc_change != SEN_AGC_CHANGE_NOP) {
     if(agc_change != SEN_AGC_CHANGE_NOP) {
       ESP_LOGI(TAG,"agc_change: %u",agc_change);
@@ -493,14 +494,19 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
         {
           ESP_LOGD(TAG,"Gain too low. Adjusting gain UP...");
           tsl2591_set_gain(dev,idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx+1));
-          vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
-          tsl2591_get_ch_data(dev, channel0, channel1);
-          agc_change = 0;
-          agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
-          agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
+          // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
+          // tsl2591_get_ch_data(dev, channel0, channel1);
+          // agc_change = 0;
+          // agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
+          // agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
           return ESP_ERR_INVALID_STATE;
         } else {
           ESP_LOGI(TAG,"Reached maximum gain!");
+          dev->sen.esp_timestamp = timestamp;
+          tsl2591_basic_disable(dev);
+
+          dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
+          dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
           // break;
         }
       } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
@@ -508,19 +514,20 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
         {
           ESP_LOGD(TAG,"Gain too high. Adjusting gain DOWN...");
           tsl2591_set_gain(dev,idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx-1));
-          vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
-          tsl2591_get_ch_data(dev, channel0, channel1);
-          agc_change = 0;
-          agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
-          agc_change |= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
+          // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
+          // tsl2591_get_ch_data(dev, channel0, channel1);
+          // agc_change = 0;
+          // agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
+          // agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
           return ESP_ERR_INVALID_STATE;
         }
         else
         {
           ESP_LOGW(TAG,"Sensor saturated!");
           ESP_LOGD(TAG,"dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx: %u",dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx);
-          gettimeofday(&tv, NULL);
-          dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+          // gettimeofday(&tv, NULL);
+          // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+          dev->sen.esp_timestamp = timestamp;
           dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
           dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
           tsl2591_basic_disable(dev);
@@ -529,16 +536,17 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
         }
       }
     }
-    // else
-    // {
-    gettimeofday(&tv, NULL);
-    dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-    tsl2591_basic_disable(dev);
+    else
+    {
+    // gettimeofday(&tv, NULL);
+    // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+      dev->sen.esp_timestamp = timestamp;
+      tsl2591_basic_disable(dev);
 
-    dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
+      dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
+      dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
     // dev->sen.outs[TSL2591_OUT_CH0_ID].timestamp = dev->sen.outs[TSL2591_OUT_CH1_ID].timestamp = timestamp;
-
+    }
     return ESP_OK;
 }
 
@@ -743,7 +751,7 @@ esp_err_t tsl2591_set_integration_time(tsl2591_t *dev, tsl2591_integration_time_
       break;
     }
 
-    dev->sen.conf.delay_after_awake_ms = int_times[i_idx];
+    dev->sen.conf.delay_after_awake_us = int_times[i_idx]*1000;
     dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
     dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
@@ -780,7 +788,7 @@ esp_err_t tsl2591_get_integration_time(tsl2591_t *dev, tsl2591_integration_time_
         i_idx=0;
       break;
     }
-    dev->sen.conf.delay_after_awake_ms = int_times[i_idx];
+    dev->sen.conf.delay_after_awake_us = int_times[i_idx]*1000;
     dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
     dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 

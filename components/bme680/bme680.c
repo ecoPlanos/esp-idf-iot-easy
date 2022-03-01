@@ -41,13 +41,13 @@
 #include <freertos/task.h>
 #include <esp_log.h>
 #include <esp_idf_lib_helpers.h>
+#include <esp_timer.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
 #include "bme680.h"
 
-// #define I2C_FREQ_HZ 1000000 // Up to 3.4MHz, but esp-idf only supports 1MHz TODO: adjust pull-up resistors to get higher clock rates
-#define I2C_FREQ_HZ 100000 // Up to 3.4MHz, but esp-idf only supports 1MHz TODO: adjust pull-up resistors to get higher clock rates
+#define I2C_FREQ_HZ 1000000 // Up to 3.4MHz, but esp-idf only supports 1MHz TODO: adjust pull-up resistors to get higher clock rates
+// #define I2C_FREQ_HZ 100000 // Up to 3.4MHz, but esp-idf only supports 1MHz TODO: adjust pull-up resistors to get higher clock rates
 
 // modes: unfortunatly, only SLEEP_MODE and FORCED_MODE are documented
 #define BME680_SLEEP_MODE           0x00    // low power sleeping
@@ -315,8 +315,9 @@ static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
             return ESP_ERR_INVALID_RESPONSE;
         }
     }
-    gettimeofday(&tv, NULL);
-    dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+    // gettimeofday(&tv, NULL);
+    // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+    dev->sen.esp_timestamp = esp_timer_get_time();
     dev->meas_started = false;
     raw_data->gas_index = dev->meas_status & BME680_GAS_MEAS_INDEX_BITS;
 
@@ -576,61 +577,62 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
 #if HELPER_TARGET_IS_ESP32
     dev->i2c_dev.cfg.master.clk_speed = I2C_FREQ_HZ;
 #endif
-memset(&dev->sen, 0, sizeof(sensor_t));
-sensor_init(&dev->sen,4);
-strncpy(dev->sen.info.name, "BME680\0", 7);
-dev->sen.info.lib_id = SEN_BME680_LIB_ID;
-dev->sen.info.sen_id = sen_id;
-dev->sen.info.version = 1;
-dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
-dev->sen.conf.min_period_us = 0;
-dev->sen.status.delay_start_get_ms = 0;
-dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
-dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
-dev->sen.conf.addr = BME680_I2C_ADDR_0;
-dev->sen.conf.period_ms=nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS);
-dev->sen.dev=dev;
-dev->sen.reset=bme680_iot_sen_reset;
-dev->sen.reinit=bme680_iot_sen_reinit;
-dev->sen.start_measurement=bme680_iot_sen_start_measurement;
-dev->sen.get_data=bme680_iot_sen_get_data;
-dev->sen.awake=bme680_iot_sen_sleep_mode_awake;
-dev->sen.sleep=bme680_iot_sen_sleep_mode_sleep;
+  memset(&dev->sen, 0, sizeof(sensor_t));
+  sensor_init(&dev->sen,4);
+  strncpy(dev->sen.info.name, "BME680\0", 7);
+  dev->sen.info.lib_id = SEN_BME680_LIB_ID;
+  dev->sen.info.sen_id = sen_id;
+  dev->sen.info.version = 1;
+  dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
+  dev->sen.conf.min_period_us = 0;
+  dev->sen.status.delay_start_get_us = 0;
+  dev->sen.conf.delay_after_awake_us = 10000;
+  dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
+  dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+  dev->sen.conf.addr = BME680_I2C_ADDR_0;
+  dev->sen.conf.period_ms=nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS);
+  dev->sen.dev=dev;
+  dev->sen.reset=bme680_iot_sen_reset;
+  dev->sen.reinit=bme680_iot_sen_reinit;
+  dev->sen.start_measurement=bme680_iot_sen_start_measurement;
+  dev->sen.get_data=bme680_iot_sen_get_data;
+  dev->sen.awake=bme680_iot_sen_sleep_mode_awake;
+  dev->sen.sleep=bme680_iot_sen_sleep_mode_sleep;
 
-dev->sen.status.initialized = false;
-dev->sen.status.fail_cnt = 0;
-dev->sen.status.fail_time = 0;
+  dev->sen.status.initialized = false;
+  dev->sen.status.fail_cnt = 0;
+  dev->sen.status.fail_time = 0;
 
-dev->sen.outs[BME680_OUT_TEMP_ID].out_id=BME680_OUT_TEMP_ID;
-dev->sen.outs[BME680_OUT_TEMP_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
-dev->sen.outs[BME680_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
-dev->sen.outs[BME680_OUT_TEMP_ID].m_raw=0;
-dev->sen.outs[BME680_OUT_TEMP_ID].temperature=0.0;
-// dev->sen.outs[BME680_OUT_TEMP_ID].conf.srate=0;
+  dev->sen.outs[BME680_OUT_TEMP_ID].out_id=BME680_OUT_TEMP_ID;
+  dev->sen.outs[BME680_OUT_TEMP_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
+  dev->sen.outs[BME680_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+  dev->sen.outs[BME680_OUT_TEMP_ID].m_raw=0;
+  dev->sen.outs[BME680_OUT_TEMP_ID].temperature=0.0;
+  // dev->sen.outs[BME680_OUT_TEMP_ID].conf.srate=0;
 
-dev->sen.outs[BME680_OUT_PRESSURE_ID].out_id=BME680_OUT_PRESSURE_ID;
-dev->sen.outs[BME680_OUT_PRESSURE_ID].out_type=SEN_TYPE_PRESSURE;
-dev->sen.outs[BME680_OUT_PRESSURE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
-dev->sen.outs[BME680_OUT_PRESSURE_ID].m_raw=0;
-dev->sen.outs[BME680_OUT_PRESSURE_ID].pressure=0.0;
-// dev->sen.outs[BME680_OUT_PRESSURE_ID].conf.srate=0;
+  dev->sen.outs[BME680_OUT_PRESSURE_ID].out_id=BME680_OUT_PRESSURE_ID;
+  dev->sen.outs[BME680_OUT_PRESSURE_ID].out_type=SEN_TYPE_PRESSURE;
+  dev->sen.outs[BME680_OUT_PRESSURE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+  dev->sen.outs[BME680_OUT_PRESSURE_ID].m_raw=0;
+  dev->sen.outs[BME680_OUT_PRESSURE_ID].pressure=0.0;
+  // dev->sen.outs[BME680_OUT_PRESSURE_ID].conf.srate=0;
 
-dev->sen.outs[BME680_OUT_RH_ID].out_id=BME680_OUT_RH_ID;
-dev->sen.outs[BME680_OUT_RH_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
-dev->sen.outs[BME680_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
-dev->sen.outs[BME680_OUT_RH_ID].m_raw=0;
-dev->sen.outs[BME680_OUT_RH_ID].relative_humidity=0.0;
-// dev->sen.outs[BME680_OUT_RH_ID].conf.srate=0;
+  dev->sen.outs[BME680_OUT_RH_ID].out_id=BME680_OUT_RH_ID;
+  dev->sen.outs[BME680_OUT_RH_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
+  dev->sen.outs[BME680_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+  dev->sen.outs[BME680_OUT_RH_ID].m_raw=0;
+  dev->sen.outs[BME680_OUT_RH_ID].relative_humidity=0.0;
+  // dev->sen.outs[BME680_OUT_RH_ID].conf.srate=0;
 
-dev->sen.outs[BME680_OUT_GAS_ID].out_id=BME680_OUT_GAS_ID;
-dev->sen.outs[BME680_OUT_GAS_ID].out_type=SEN_TYPE_GAS_RESISTANCE;
-dev->sen.outs[BME680_OUT_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
-dev->sen.outs[BME680_OUT_GAS_ID].m_raw=0;
-dev->sen.outs[BME680_OUT_GAS_ID].resistance=0.0;
-// dev->sen.outs[BME680_OUT_GAS_ID].conf.srate=0;
+  dev->sen.outs[BME680_OUT_GAS_ID].out_id=BME680_OUT_GAS_ID;
+  dev->sen.outs[BME680_OUT_GAS_ID].out_type=SEN_TYPE_GAS_RESISTANCE;
+  dev->sen.outs[BME680_OUT_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+  dev->sen.outs[BME680_OUT_GAS_ID].m_raw=0;
+  dev->sen.outs[BME680_OUT_GAS_ID].resistance=0.0;
+  // dev->sen.outs[BME680_OUT_GAS_ID].conf.srate=0;
 
-dev->sen.conf.srate=0;
-    return i2c_dev_create_mutex(&dev->i2c_dev);
+  dev->sen.conf.srate=0;
+  return i2c_dev_create_mutex(&dev->i2c_dev);
 }
 
 esp_err_t bme680_free_desc(bme680_t *dev) {
@@ -785,6 +787,7 @@ esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration) {
 
     // some ms tolerance
     *duration += 5;
+    *duration += 50;
 
     // ceil to next integer value that is divisible by portTICK_PERIOD_MS and
     // compute RTOS ticks (1 ... portTICK_PERIOD_MS =  1 tick)
@@ -796,7 +799,7 @@ esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration) {
     // and not for the typical durations and therefore tends to be too long, this
     // should not be a problem. Therefore, only one additional tick used.
     *duration += 1;
-    dev->sen.status.delay_start_get_ms = pdTICKS_TO_MS(*duration);
+    dev->sen.status.delay_start_get_us = pdTICKS_TO_MS(*duration)*1000;
 
     return ESP_OK;
 }

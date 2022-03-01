@@ -19,8 +19,8 @@
 #include <freertos/task.h>
 #include <esp_log.h>
 #include <esp_idf_lib_helpers.h>
+#include <esp_timer.h>
 #include <string.h>
-#include <sys/time.h>
 #include "analog_sen.h"
 
 static const char *TAG = "analog_sen";
@@ -106,7 +106,9 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     dev->calc_processed = calc_processed_func;
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,2);
-    strncpy(dev->sen.info.name, sen_name, strlen(sen_name));
+    // strncpy(dev->sen.info.name, sen_name, strlen(sen_name));
+    // strncpy(dev->sen.info.name, sen_name, strlen(sen_name));
+    strncpy(dev->sen.info.name, "SLS_BTA\0", 8);
     dev->sen.info.lib_id = SEN_ANALOG_SEN_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
@@ -115,10 +117,11 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     // dev->sen.conf.period_ms=nearest_prime(CONFIG_ANALOG_DEFAULT_PERIOD_MS);
     dev->sen.conf.period_ms=nearest_prime(period_ms);
     dev->sen.conf.min_period_us = 1000;
-    dev->sen.status.delay_start_get_ms = samples_filter*5;
+    dev->sen.status.delay_start_get_us = samples_filter*5000;
     dev->sen.info.out_nr = 1;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.timestamp=0;
+    dev->sen.esp_timestamp=0;
     dev->sen.dev=dev;
     dev->sen.reset=analog_sen_iot_sen_reset;
     dev->sen.reinit=analog_sen_iot_sen_reinit;
@@ -203,8 +206,9 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
         else {
           ESP_LOGW(TAG,"Sensor saturated!");
           ESP_LOGD(TAG,"dev->sen.outs[0].atts_agc.idx: %u",dev->sen.outs[0].atts_agc.idx);
-        	gettimeofday(&tv, NULL);
-          dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+        	// gettimeofday(&tv, NULL);
+          // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+          dev->sen.esp_timestamp = esp_timer_get_time();
           dev->sen.outs[0].m_raw = adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
           //TODO: add flag to data to indicate saturation!
           // return ESP_OK;
@@ -259,10 +263,11 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
 
     // else
     // {
-  	gettimeofday(&tv, NULL);
+  	// gettimeofday(&tv, NULL);
   	// timestamp = (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL)) ;
   	// timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-    dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+    // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+    dev->sen.esp_timestamp = esp_timer_get_time();
     dev->sen.outs[0].m_raw = adc_reading_mean;
 
     return ESP_OK;

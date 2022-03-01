@@ -40,7 +40,6 @@
 #include <freertos/task.h>
 #include <esp_idf_lib_helpers.h>
 #include <esp_timer.h>
-#include <sys/time.h>
 #include <string.h>
 #include "pms1003.h"
 
@@ -304,15 +303,13 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,12);
     strncpy(dev->sen.info.name, "PMS1003\0", 8);
-    dev->sen.conf.delay_after_awake_ms = (uint32_t) CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS;
-    ESP_LOGD(TAG, "delay_after_awake_ms: %u", CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS);
-    ESP_LOGD(TAG, "dev->sen.conf.delay_after_awake_ms: %u", dev->sen.conf.delay_after_awake_ms);
+    dev->sen.conf.delay_after_awake_us = (uint32_t) (CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS*1000);
     dev->sen.info.lib_id = SEN_PMS1003_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 0;
-    dev->sen.status.delay_start_get_ms = 100;
+    dev->sen.status.delay_start_get_us = 100000;
     dev->sen.info.out_nr = 12;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.period_ms=nearest_prime(CONFIG_PMS1003_DEFAULT_PERIOD_MS);
@@ -578,7 +575,7 @@ size_t pms1003_get_measurement_duration(pms1003_t *dev) {
 
 esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
     CHECK_ARG(dev);
-    uint64_t timestamp;
+    int64_t timestamp;
     struct timeval tv;
 
     ESP_LOGD(TAG, "pms1003_get_raw_data");
@@ -586,12 +583,13 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
       ESP_LOGE(TAG, "Measurement is still running");
       return ESP_ERR_INVALID_STATE;
     }
-    gettimeofday(&tv, NULL);
+    // gettimeofday(&tv, NULL);
 
     CHECK(read_res(dev, raw));
+    // timestamp=esp_timer_get_time();
+    dev->sen.esp_timestamp=esp_timer_get_time();
+    // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;  //TODO: change timestamping using temporary variables and measurement delay calculation
     dev->meas_started = false;
-    dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;  //TODO: change timestamping using temporary variables and measurement delay calculation
-
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw = raw->pm1_0_con_unit;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw = raw->pm2_5_con_unit;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].m_raw = raw->pm10_con_unit;
@@ -604,7 +602,7 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].m_raw = raw->particle_nr_2_5_um;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].m_raw = raw->particle_nr_5_0_um;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].m_raw = raw->particle_nr_10_um;
-    print_raw_values(dev);
+    // print_raw_values(dev);
     return ESP_OK;
 }
 

@@ -40,7 +40,6 @@
 #include <freertos/task.h>
 #include <esp_idf_lib_helpers.h>
 #include <esp_timer.h>
-#include <sys/time.h>
 #include <string.h>
 #include "sfa30.h"
 
@@ -174,12 +173,12 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
   dev->sen.info.version = 1;
   dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
   dev->sen.conf.min_period_us = 10000;
-  dev->sen.status.delay_start_get_ms = 5;
+  dev->sen.status.delay_start_get_us = 5000;
   dev->sen.info.out_nr = 3; //hcho, RH, temperature
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = SFA30_I2C_ADDRESS;
   dev->sen.conf.period_ms = nearest_prime(CONFIG_SFA30_DEFAULT_PERIOD_MS);
-  dev->sen.conf.delay_after_awake_ms=10;
+  dev->sen.conf.delay_after_awake_us=10000;
   dev->sen.dev=dev;
   dev->sen.reset=sfa30_iot_sen_reset;
   dev->sen.reinit=sfa30_iot_sen_reinit;
@@ -230,7 +229,7 @@ esp_err_t sfa30_init(sfa30_t *dev) {
   CHECK_ARG(dev);
   float hcho, humidity, temperature;
 
-  dev->sen.status.delay_start_get_ms=get_duration_ms(dev);
+  dev->sen.status.delay_start_get_us=get_duration_ms(dev)*1000;
 
   CHECK(sfa30_reset(dev));
   vTaskDelay(pdMS_TO_TICKS(100));
@@ -266,7 +265,7 @@ esp_err_t sfa30_measure(sfa30_t *dev, float *hcho, float *humidity, float *tempe
   CHECK_ARG(dev && (hcho || temperature || humidity));
 
   sfa30_raw_data_t raw;
-  gettimeofday(&tv, NULL);
+  // gettimeofday(&tv, NULL);
   if(!dev->measurement_running) {
     vTaskDelay(100);
     CHECK(sfa30_start_measurement(dev));
@@ -286,7 +285,7 @@ esp_err_t sfa30_measure(sfa30_t *dev, float *hcho, float *humidity, float *tempe
   dev->sen.outs[SFA30_OUT_RH_ID].relative_humidity = *humidity;
   dev->sen.outs[SFA30_OUT_TEMP_ID].temperature = *temperature;
   CHECK(sfa30_compute_values(dev, raw, hcho, humidity, temperature));
-  dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+  dev->sen.esp_timestamp = esp_timer_get_time();
   ESP_LOGD(TAG, "HCHO raw: %d",dev->sen.outs[SFA30_OUT_HCHO_ID].m_raw);
   ESP_LOGD(TAG, "RH raw: %d",dev->sen.outs[SFA30_OUT_RH_ID].m_raw);
   ESP_LOGD(TAG, "Temp raw: %d",dev->sen.outs[SFA30_OUT_TEMP_ID].m_raw);
@@ -349,8 +348,8 @@ esp_err_t sfa30_get_raw_data(sfa30_t *dev, sfa30_raw_data_t raw) {
     vTaskDelay(sfa30_get_measurement_duration(dev));
     ret = read_res(dev, raw, SFA30_RAW_DATA_SIZE);
     if(ret==ESP_OK) {
-      gettimeofday(&tv, NULL);
-      dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+      // gettimeofday(&tv, NULL);
+      dev->sen.esp_timestamp = esp_timer_get_time();
       dev->sen.outs[SFA30_OUT_HCHO_ID].m_raw=((raw[0] << 8) | raw[1]);
       dev->sen.outs[SFA30_OUT_RH_ID].m_raw=((raw[3] << 8) | raw[4]);
       dev->sen.outs[SFA30_OUT_TEMP_ID].m_raw=((raw[6] << 8) | raw[7]);
@@ -403,8 +402,8 @@ esp_err_t sfa30_iot_sen_get_data(void *dev) {
   struct timeval tv;
 
   CHECK(read_res(dev, raw, SFA30_RAW_DATA_SIZE));
-  gettimeofday(&tv, NULL);
-  dev_->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+  // gettimeofday(&tv, NULL);
+  dev_->sen.esp_timestamp = esp_timer_get_time();
   dev_->sen.outs[SFA30_OUT_HCHO_ID].m_raw=((raw[0] << 8) | raw[1]);
   dev_->sen.outs[SFA30_OUT_RH_ID].m_raw=((raw[3] << 8) | raw[4]);
   dev_->sen.outs[SFA30_OUT_TEMP_ID].m_raw=((raw[6] << 8) | raw[7]);
