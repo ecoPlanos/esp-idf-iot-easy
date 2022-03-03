@@ -61,7 +61,8 @@ extern "C" {
 typedef enum
 {
   TSL2591_OUT_CH0_ID = 0,
-  TSL2591_OUT_CH1_ID
+  TSL2591_OUT_CH1_ID,
+  TSL2591_OUT_CH2_ID
 };
 
 /**
@@ -69,8 +70,8 @@ typedef enum
  */
 typedef enum
 {
-    TSL2591_POWER_OFF = 0x00,
-    TSL2591_POWER_ON = 0x01 //!< Default
+  TSL2591_POWER_OFF = 0x00,
+  TSL2591_POWER_ON = 0x01 //!< Default
 } tsl2591_power_status_t;
 
 /**
@@ -78,8 +79,8 @@ typedef enum
  */
 typedef enum
 {
-    TSL2591_ALS_OFF = 0x00,
-    TSL2591_ALS_ON = 0x02   //!< Default
+  TSL2591_ALS_OFF = 0x00,
+  TSL2591_ALS_ON = 0x02   //!< Default
 } tsl2591_als_status_t;
 
 /**
@@ -88,10 +89,10 @@ typedef enum
  */
 typedef enum
 {
-    TSL2591_INTR_OFF = 0x00, //!< Default
-    TSL2591_ALS_INTR_ON = 0x10,
-    TSL2591_ALS_INTR_NP_ON = 0x80,
-    TSL2591_ALS_INTR_BOTH_ON = 0x90
+  TSL2591_INTR_OFF = 0x00, //!< Default
+  TSL2591_ALS_INTR_ON = 0x10,
+  TSL2591_ALS_INTR_NP_ON = 0x80,
+  TSL2591_ALS_INTR_BOTH_ON = 0x90
 } tsl2591_interrupt_t;
 
 /**
@@ -99,8 +100,8 @@ typedef enum
  */
 typedef enum
 {
-    TSL2591_SLEEP_AFTER_OFF = 0x00, //!< Default
-    TSL2591_SLEEP_AFTER_ON = 0x40
+  TSL2591_SLEEP_AFTER_OFF = 0x00, //!< Default
+  TSL2591_SLEEP_AFTER_ON = 0x40
 } tsl2591_sleep_after_intr_t;
 
 /**
@@ -108,12 +109,12 @@ typedef enum
  */
 typedef enum
 {
-    TSL2591_INTEGRATION_100MS = 0, //!< Default
-    TSL2591_INTEGRATION_200MS,
-    TSL2591_INTEGRATION_300MS,
-    TSL2591_INTEGRATION_400MS,
-    TSL2591_INTEGRATION_500MS,
-    TSL2591_INTEGRATION_600MS
+  TSL2591_INTEGRATION_100MS = 0, //!< Default
+  TSL2591_INTEGRATION_200MS,
+  TSL2591_INTEGRATION_300MS,
+  TSL2591_INTEGRATION_400MS,
+  TSL2591_INTEGRATION_500MS,
+  TSL2591_INTEGRATION_600MS
 } tsl2591_integration_time_t;
 
 /**
@@ -121,10 +122,10 @@ typedef enum
  */
 typedef enum
 {
-    TSL2591_GAIN_LOW = 0x00, //!< Default
-    TSL2591_GAIN_MEDIUM = 0x10,
-    TSL2591_GAIN_HIGH = 0x20,
-    TSL2591_GAIN_MAX = 0x30
+  TSL2591_GAIN_LOW = 0x00, //!< Default
+  TSL2591_GAIN_MEDIUM = 0x10,
+  TSL2591_GAIN_HIGH = 0x20,
+  TSL2591_GAIN_MAX = 0x30
 } tsl2591_gain_t;
 
 /**
@@ -132,22 +133,22 @@ typedef enum
  */
 typedef enum
 {
-    TSL2591_EVERY_CYCLE = 0, //!< Default
-    TSL2591_NO_PERSIST,
-    TSL2591_2_CYCLES,
-    TSL2591_3_CYCLES,
-    TSL2591_5_CYCLES,
-    TSL2591_10_CYCLES,
-    TSL2591_15_CYCLES,
-    TSL2591_20_CYCLES,
-    TSL2591_25_CYCLES,
-    TSL2591_30_CYCLES,
-    TSL2591_35_CYCLES,
-    TSL2591_40_CYCLES,
-    TSL2591_45_CYCLES,
-    TSL2591_50_CYCLES,
-    TSL2591_55_CYCLES,
-    TSL2591_60_CYCLES
+  TSL2591_EVERY_CYCLE = 0, //!< Default
+  TSL2591_NO_PERSIST,
+  TSL2591_2_CYCLES,
+  TSL2591_3_CYCLES,
+  TSL2591_5_CYCLES,
+  TSL2591_10_CYCLES,
+  TSL2591_15_CYCLES,
+  TSL2591_20_CYCLES,
+  TSL2591_25_CYCLES,
+  TSL2591_30_CYCLES,
+  TSL2591_35_CYCLES,
+  TSL2591_40_CYCLES,
+  TSL2591_45_CYCLES,
+  TSL2591_50_CYCLES,
+  TSL2591_55_CYCLES,
+  TSL2591_60_CYCLES
 } tsl2591_persistence_filter_t;
 
 /**
@@ -165,9 +166,9 @@ typedef enum
  */
 typedef struct
 {
-    uint8_t enable_reg;
-    uint8_t control_reg;
-    uint8_t persistence_reg;
+  uint8_t enable_reg;
+  uint8_t control_reg;
+  uint8_t persistence_reg;
 } tsl2591_settings_t;
 
 /**
@@ -175,9 +176,9 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t pack_id;    // Package Identification
-    uint8_t dev_id;     // Device Identification
-    uint8_t status;
+  uint8_t pack_id;    // Package Identification
+  uint8_t dev_id;     // Device Identification
+  uint8_t status;
 } tsl2591_inf_t;
 
 /**
@@ -185,10 +186,10 @@ typedef struct
  */
 typedef struct
 {
-    i2c_dev_t i2c_dev;
-    tsl2591_settings_t settings;
-    tsl2591_inf_t info;
-    sensor_t sen;
+  i2c_dev_t i2c_dev;
+  tsl2591_settings_t settings;
+  tsl2591_inf_t info;
+  sensor_t sen;
 } tsl2591_t;
 
 
@@ -235,6 +236,16 @@ esp_err_t tsl2591_iot_sen_measurement(void *dev);
  */
 esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1);
 
+/**
+ * @brief Calculate light intensity from channels
+ *
+ * @param dev Device descriptor
+ * @param channel0 Channel0 data
+ * @param channel1 Channel1 data
+ * @param[out] Light intensity in uW/cm^2
+ * @return `ESP_OK` on success
+ */
+esp_err_t tsl2591_calculate_irradiance(tsl2591_t *dev, uint16_t channel0, uint16_t channel1, float *irradiance);
 /**
  * @brief Calculate light intensity from channels
  *
