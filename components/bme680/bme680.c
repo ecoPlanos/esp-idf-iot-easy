@@ -590,7 +590,7 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = BME680_I2C_ADDR_0;
-  dev->sen.conf.period_ms=nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS/1000)*1000;
+  dev->sen.conf.period_ms=nearest_prime(nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS/1000)*1000);
   dev->sen.dev=dev;
   dev->sen.reset=bme680_iot_sen_reset;
   dev->sen.reinit=bme680_iot_sen_reinit;
