@@ -317,7 +317,7 @@ static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
     }
     // gettimeofday(&tv, NULL);
     // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-    dev->sen.esp_timestamp = esp_timer_get_time();
+    // dev->sen.esp_timestamp = esp_timer_get_time();
     dev->meas_started = false;
     raw_data->gas_index = dev->meas_status & BME680_GAS_MEAS_INDEX_BITS;
 
@@ -585,12 +585,12 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.info.version = 1;
   dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
   dev->sen.conf.min_period_us = 0;
-  dev->sen.status.delay_start_get_us = 0;
-  dev->sen.conf.delay_after_awake_us = 10000;
+  dev->sen.status.delay_start_get_us = 100000;
+  dev->sen.conf.delay_after_awake_us = 100000;
   dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = BME680_I2C_ADDR_0;
-  dev->sen.conf.period_ms=nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS);
+  dev->sen.conf.period_ms=nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS/1000)*1000;
   dev->sen.dev=dev;
   dev->sen.reset=bme680_iot_sen_reset;
   dev->sen.reinit=bme680_iot_sen_reinit;
@@ -743,6 +743,7 @@ esp_err_t bme680_force_measurement(bme680_t *dev) {
             "Could not set forced mode to start TPHG measurement cycle");
     dev->meas_started = true;
     dev->meas_status = 0;
+    dev->sen.esp_timestamp = esp_timer_get_time();
 
     ESP_LOGD(TAG, "Started measurement");
 
@@ -799,7 +800,7 @@ esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration) {
     // and not for the typical durations and therefore tends to be too long, this
     // should not be a problem. Therefore, only one additional tick used.
     *duration += 1;
-    dev->sen.status.delay_start_get_us = pdTICKS_TO_MS(*duration)*1000;
+    dev->sen.status.delay_start_get_us = pdTICKS_TO_MS(*duration)*1000+100000;
 
     return ESP_OK;
 }

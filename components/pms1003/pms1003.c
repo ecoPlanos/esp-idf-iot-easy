@@ -303,16 +303,17 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,12);
     strncpy(dev->sen.info.name, "PMS1003\0", 8);
-    dev->sen.conf.delay_after_awake_us = (uint32_t) (CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS*1000);
+    // dev->sen.conf.delay_after_awake_us = (uint32_t) (CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS*1000);
+    dev->sen.conf.delay_after_awake_us = 35000000;
     dev->sen.info.lib_id = SEN_PMS1003_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 0;
-    dev->sen.status.delay_start_get_us = 100000;
+    dev->sen.status.delay_start_get_us = 500000;
     dev->sen.info.out_nr = 12;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
-    dev->sen.conf.period_ms=nearest_prime(CONFIG_PMS1003_DEFAULT_PERIOD_MS);
+    dev->sen.conf.period_ms=nearest_prime(CONFIG_PMS1003_DEFAULT_PERIOD_MS/1000)*1000;
     dev->sen.dev=dev;
     dev->sen.reset=pms1003_iot_sen_reset;
     dev->sen.reinit=pms1003_iot_sen_reinit;
@@ -513,6 +514,7 @@ esp_err_t pms1003_start_measurement(pms1003_t *dev) {
   CHECK(exec_cmd(dev,cmd, 0));
   dev->meas_start_time = esp_timer_get_time();
   dev->meas_started = true;
+  dev->sen.esp_timestamp=esp_timer_get_time();  //Scince we are going to wait a bit before reading the serial bus, it is more accurate to add timestamp here...
   // uint8_t cmd[7];
   // uint16_t check = 0;
   // cmd[0] = START_BYTE_1;
@@ -587,7 +589,7 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
 
     CHECK(read_res(dev, raw));
     // timestamp=esp_timer_get_time();
-    dev->sen.esp_timestamp=esp_timer_get_time();
+    // dev->sen.esp_timestamp=esp_timer_get_time();
     // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;  //TODO: change timestamping using temporary variables and measurement delay calculation
     dev->meas_started = false;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw = raw->pm1_0_con_unit;

@@ -115,7 +115,7 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     dev->sen.conf.com_type = SEN_COM_TYPE_ANALOG;
     dev->sen.conf.samples_filter = samples_filter;
     // dev->sen.conf.period_ms=nearest_prime(CONFIG_ANALOG_DEFAULT_PERIOD_MS);
-    dev->sen.conf.period_ms=nearest_prime(period_ms);
+    dev->sen.conf.period_ms=nearest_prime(period_ms/1000)*1000;
     dev->sen.conf.min_period_us = 1000;
     dev->sen.status.delay_start_get_us = samples_filter*5000;
     dev->sen.info.out_nr = 1;

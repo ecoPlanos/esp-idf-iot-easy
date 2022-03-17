@@ -177,8 +177,8 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
   dev->sen.info.out_nr = 3; //hcho, RH, temperature
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = SFA30_I2C_ADDRESS;
-  dev->sen.conf.period_ms = nearest_prime(CONFIG_SFA30_DEFAULT_PERIOD_MS);
-  dev->sen.conf.delay_after_awake_us=10000;
+  dev->sen.conf.period_ms = nearest_prime(CONFIG_SFA30_DEFAULT_PERIOD_MS/1000)*1000;
+  dev->sen.conf.delay_after_awake_us=100000;
   dev->sen.dev=dev;
   dev->sen.reset=sfa30_iot_sen_reset;
   dev->sen.reinit=sfa30_iot_sen_reinit;
@@ -316,6 +316,7 @@ esp_err_t sfa30_get_data(sfa30_t *dev) {
     dev->measurement_running=true;
     ESP_LOGD(TAG, "Retrieving data!");
     dev->meas_start_time = esp_timer_get_time();
+    dev->sen.esp_timestamp = esp_timer_get_time();
     dev->meas_started = true;
 
     return ESP_OK;
@@ -403,7 +404,7 @@ esp_err_t sfa30_iot_sen_get_data(void *dev) {
 
   CHECK(read_res(dev, raw, SFA30_RAW_DATA_SIZE));
   // gettimeofday(&tv, NULL);
-  dev_->sen.esp_timestamp = esp_timer_get_time();
+  // dev_->sen.esp_timestamp = esp_timer_get_time();
   dev_->sen.outs[SFA30_OUT_HCHO_ID].m_raw=((raw[0] << 8) | raw[1]);
   dev_->sen.outs[SFA30_OUT_RH_ID].m_raw=((raw[3] << 8) | raw[4]);
   dev_->sen.outs[SFA30_OUT_TEMP_ID].m_raw=((raw[6] << 8) | raw[7]);
