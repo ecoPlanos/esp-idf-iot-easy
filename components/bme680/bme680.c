@@ -735,7 +735,7 @@ esp_err_t bme680_force_measurement(bme680_t *dev) {
     CHECK_ARG(dev);
     if (dev->meas_started) {
         ESP_LOGE(TAG, "Measurement is already running");
-        return ESP_ERR_INVALID_STATE;
+        return ESP_OK;
     }
 
     // Set the power mode to forced mode to trigger one TPHG measurement cycle
