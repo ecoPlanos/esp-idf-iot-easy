@@ -248,52 +248,55 @@ static inline esp_err_t read_register16(tsl2591_t *dev, uint8_t low_register, ui
     return err;
 }
 
-static inline tsl2591_gain_t idx2gain(uint8_t idx) {
-  switch(idx)
-  {
+static inline esp_err_t idx2gain(uint8_t idx, tsl2591_gain_t *gain) {
+  if(!gain) return ESP_ERR_INVALID_ARG;
+  switch(idx) {
     case 0:
-      return TSL2591_GAIN_LOW;
+      *gain=TSL2591_GAIN_LOW;
     break;
     case 1:
-      return TSL2591_GAIN_MEDIUM;
+      *gain=TSL2591_GAIN_MEDIUM;
     break;
     case 2:
-      return TSL2591_GAIN_HIGH;
+      *gain=TSL2591_GAIN_HIGH;
     break;
     case 3:
-      return TSL2591_GAIN_MAX;
+      *gain=TSL2591_GAIN_MAX;
     break;
     default:
-      return TSL2591_GAIN_LOW;
+      ESP_LOGE(TAG, "Invalid gain!");
+      return ESP_ERR_INVALID_ARG;
     break;
   }
+  return ESP_OK;
 }
 
-static inline tsl2591_integration_time_t idx2itime(uint8_t idx) {
-  switch(idx)
-  {
+static inline esp_err_t idx2itime(uint8_t idx, tsl2591_integration_time_t *it) {
+  switch(idx) {
     case 0:
-      return TSL2591_INTEGRATION_100MS;
+      *it=TSL2591_INTEGRATION_100MS;
     break;
     case 1:
-      return TSL2591_INTEGRATION_200MS;
+      *it=TSL2591_INTEGRATION_200MS;
     break;
     case 2:
-      return TSL2591_INTEGRATION_300MS;
+      *it=TSL2591_INTEGRATION_300MS;
     break;
     case 3:
-      return TSL2591_INTEGRATION_400MS;
+      *it=TSL2591_INTEGRATION_400MS;
     break;
     case 4:
-      return TSL2591_INTEGRATION_500MS;
+      *it=TSL2591_INTEGRATION_500MS;
     break;
     case 5:
-      return TSL2591_INTEGRATION_600MS;
+      *it=TSL2591_INTEGRATION_600MS;
     break;
     default:
-      return TSL2591_INTEGRATION_100MS;
+      *it=TSL2591_INTEGRATION_100MS;
+      return ESP_ERR_INVALID_ARG;
     break;
   }
+  return ESP_OK;
 }
 
 
@@ -332,7 +335,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.awake=tsl2591_iot_sen_sleep_mode_awake;
     dev->sen.sleep=tsl2591_iot_sen_sleep_mode_sleep;
 
-    dev->sen.status.delay_start_get_us = 620000;
+    dev->sen.status.delay_start_get_us = 620000*3;
     dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
@@ -460,25 +463,77 @@ esp_err_t tsl2591_init(tsl2591_t *dev) {
     return ESP_OK;
 }
 
-static inline void tsl2591_get_ch_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1) {
+static inline esp_err_t tsl2591_get_ch_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1) {
   I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
   I2C_DEV_CHECK(&dev->i2c_dev, read_register16(dev, TSL2591_REG_C0DATAL, channel0));
   I2C_DEV_CHECK(&dev->i2c_dev, read_register16(dev, TSL2591_REG_C1DATAL, channel1));
 
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+  return ESP_OK;
+}
 
+static inline esp_err_t tsl2591_test_gain(tsl2591_t *dev) {
+  uint16_t channel0=0, channel1=0;
+  sen_agc_change_type_t agc_change = 0;
+  tsl2591_gain_t gain;
+  if((dev->settings.enable_reg & (TSL2591_POWER_ON | TSL2591_ALS_ON)) != (TSL2591_POWER_ON | TSL2591_ALS_ON))
+    tsl2591_basic_enable(dev);
+  if(tsl2591_get_ch_data(dev, &channel0, &channel1) != ESP_OK) return ESP_FAIL;
+  agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)channel0);
+  agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)channel1);
+  if(agc_change != SEN_AGC_CHANGE_NOP) {
+    ESP_LOGI(TAG,"agc_change: %u",agc_change);
+    if(agc_change==SEN_AGC_CHANGE_UP) {
+      if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx < dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.val_nr-1) {
+        ESP_LOGD(TAG,"Gain too low. Adjusting gain UP...");
+        if(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx+1, &gain) != ESP_OK)
+          return ESP_FAIL;
+        if(tsl2591_set_gain(dev,gain) != ESP_OK) return ESP_FAIL;
+        // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
+        // tsl2591_get_ch_data(dev, channel0, channel1);
+        // agc_change = 0;
+        // agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
+        // agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
+        return ESP_ERR_INVALID_STATE;
+      } else {
+        ESP_LOGI(TAG,"Reached maximum gain!");
+        return ESP_OK;
+      }
+    } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
+      if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx > 0) {
+        ESP_LOGD(TAG,"Gain too high. Adjusting gain DOWN...");
+        if(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx-1, &gain) != ESP_OK)
+          return ESP_FAIL;
+        if(tsl2591_set_gain(dev,gain) != ESP_OK) return ESP_FAIL;
+        // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
+        // tsl2591_get_ch_data(dev, channel0, channel1);
+        // agc_change = 0;
+        // agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
+        // agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
+        return ESP_ERR_INVALID_STATE;
+      }
+      else {
+        ESP_LOGW(TAG,"Sensor saturated!");
+        ESP_LOGD(TAG,"dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx: %u",dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx);
+        //TODO: add flag to data to indicate saturation!
+        return ESP_OK;
+      }
+    }
+  }
+  return ESP_OK;
 }
 
 // Measure.
 esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1) {
+    tsl2591_gain_t gain;
     int64_t timestamp;
     struct timeval tv;
     CHECK_ARG(dev && channel0 &&  channel1);
     if((dev->settings.enable_reg & (TSL2591_POWER_ON | TSL2591_ALS_ON)) != (TSL2591_POWER_ON | TSL2591_ALS_ON))
       tsl2591_basic_enable(dev);
 
-    tsl2591_get_ch_data(dev,channel0,channel1);
+    CHECK(tsl2591_get_ch_data(dev,channel0,channel1));
     // I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
     //
     // I2C_DEV_CHECK(&dev->i2c_dev, read_register16(dev, TSL2591_REG_C0DATAL, channel0));
@@ -504,7 +559,9 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
         if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx < dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.val_nr-1)
         {
           ESP_LOGD(TAG,"Gain too low. Adjusting gain UP...");
-          tsl2591_set_gain(dev,idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx+1));
+          if(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx+1, &gain) != ESP_OK)
+            return ESP_FAIL;
+          tsl2591_set_gain(dev,gain);
           // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
           // tsl2591_get_ch_data(dev, channel0, channel1);
           // agc_change = 0;
@@ -525,7 +582,9 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
         if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx > 0)
         {
           ESP_LOGD(TAG,"Gain too high. Adjusting gain DOWN...");
-          tsl2591_set_gain(dev,idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx-1));
+          if(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx-1, &gain) != ESP_OK)
+            return ESP_FAIL;
+          tsl2591_set_gain(dev,gain);
           // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
           // tsl2591_get_ch_data(dev, channel0, channel1);
           // agc_change = 0;
@@ -622,8 +681,7 @@ esp_err_t tsl2591_calculate_lux(tsl2591_t *dev, uint16_t channel0, uint16_t chan
     CHECK_ARG(dev && lux);
 
     float atime, again;
-    switch (dev->settings.control_reg & 0x07)
-    {
+    switch (dev->settings.control_reg & 0x07) {
     case TSL2591_INTEGRATION_100MS:
         atime = int_times[0];
         break;
@@ -646,8 +704,7 @@ esp_err_t tsl2591_calculate_lux(tsl2591_t *dev, uint16_t channel0, uint16_t chan
         atime = int_times[0];
     }
 
-    switch (dev->settings.control_reg & TSL2591_GAIN_MAX)
-    {
+    switch (dev->settings.control_reg & TSL2591_GAIN_MAX) {
     case TSL2591_GAIN_LOW:
         again = gains[0];
         break;
@@ -785,7 +842,9 @@ esp_err_t tsl2591_get_sleep_after_intr(tsl2591_t *dev, tsl2591_sleep_after_intr_
 // Setters and getters control register.
 esp_err_t tsl2591_set_integration_time(tsl2591_t *dev, tsl2591_integration_time_t integration_time) {
     CHECK_ARG(dev);
-
+    tsl2591_integration_time_t it;
+    uint8_t *ctrl_reg;
+    
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
     // Last 3 bits represent the integration time.
@@ -820,10 +879,18 @@ esp_err_t tsl2591_set_integration_time(tsl2591_t *dev, tsl2591_integration_time_
         i_idx=0;
       break;
     }
-
-    dev->sen.conf.delay_after_awake_us = int_times[i_idx]*1000;
-    dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
+    I2C_DEV_CHECK(&dev->i2c_dev,
+      read_control_register(dev, &ctrl_reg));
+    I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+    CHECK(idx2itime(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx, &it));
+    if(integration_time!=it) {
+      ESP_LOGE(TAG, "Integration time didn't update!");
+      return ESP_FAIL;
+    }
+    //
+    // dev->sen.conf.delay_after_awake_us = int_times[i_idx]*1000;
+    // dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
+    // dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
     return ESP_OK;
 }
@@ -866,38 +933,53 @@ esp_err_t tsl2591_get_integration_time(tsl2591_t *dev, tsl2591_integration_time_
 }
 
 esp_err_t tsl2591_set_gain(tsl2591_t *dev, tsl2591_gain_t gain) {
+    esp_err_t ret;
+    uint8_t *ctrl_reg;
+    tsl2591_gain_t g;
     CHECK_ARG(dev);
-
+    if(gain > TSL2591_GAIN_MAX || gain < TSL2591_GAIN_LOW)
+      return ESP_ERR_INVALID_ARG;
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
     I2C_DEV_CHECK(&dev->i2c_dev,
-        write_control_register(dev, (dev->settings.control_reg & ~TSL2591_GAIN_MAX) | gain));
-    dev->settings.control_reg = (dev->settings.control_reg & ~TSL2591_GAIN_MAX) | gain;
-
+      write_control_register(dev, (dev->settings.control_reg & (~TSL2591_GAIN_MAX)) | (gain & TSL2591_GAIN_MAX)));
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-    uint8_t g_idx;
-    switch(gain)
-    {
-      case TSL2591_GAIN_LOW:
-        g_idx=0;
-      break;
-      case TSL2591_GAIN_MEDIUM:
-        g_idx=1;
-      break;
-      case TSL2591_GAIN_HIGH:
-        g_idx=2;
-      break;
-      case TSL2591_GAIN_MAX:
-        g_idx=3;
-      break;
-      default:
-        g_idx=0;
-      break;
-    }
+    vTaskDelay(pdMS_TO_TICKS(1));
+    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
-    dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx=g_idx;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc.idx=g_idx;
+    I2C_DEV_CHECK(&dev->i2c_dev,
+      read_control_register(dev, &ctrl_reg));
+    I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+    CHECK(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx, &g));
+    if(gain!=g) {
+      ESP_LOGE(TAG, "Gain didn't update!");
+      return ESP_FAIL;
+    }
+    // dev->settings.control_reg = (dev->settings.control_reg & (~TSL2591_GAIN_MAX)) | (gain & TSL2591_GAIN_MAX);
+    //
+    // uint8_t g_idx;
+    // switch(gain)
+    // {
+    //   case TSL2591_GAIN_LOW:
+    //     g_idx=0;
+    //   break;
+    //   case TSL2591_GAIN_MEDIUM:
+    //     g_idx=1;
+    //   break;
+    //   case TSL2591_GAIN_HIGH:
+    //     g_idx=2;
+    //   break;
+    //   case TSL2591_GAIN_MAX:
+    //     g_idx=3;
+    //   break;
+    //   default:
+    //     g_idx=0;
+    //   break;
+    // }
+    //
+    // dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx=g_idx;
+    // dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc.idx=g_idx;
 
     return ESP_OK;
 }
@@ -1129,7 +1211,7 @@ esp_err_t tsl2591_basic_disable(tsl2591_t *dev) {
 }
 
 esp_err_t tsl2591_iot_sen_start_measurement(void *dev) {
-  return tsl2591_basic_enable((tsl2591_t*)dev);
+  return tsl2591_test_gain((tsl2591_t*)dev);
 }
 
 esp_err_t tsl2591_iot_sen_get_data(void *dev) {
@@ -1139,7 +1221,7 @@ esp_err_t tsl2591_iot_sen_get_data(void *dev) {
   // ret = tsl2591_get_channel_data((tsl2591_t*) dev, &channel0, &channel1);
   // if(ret!=ESP_OK) return ret;
   // return tsl2591_calculate_lux();
-  return tsl2591_get_lux((tsl2591_t*) dev,&lux);
+  return tsl2591_get_lux((tsl2591_t*) dev, &lux);
 }
 
 esp_err_t tsl2591_iot_sen_sleep_mode_awake(void *dev) {
