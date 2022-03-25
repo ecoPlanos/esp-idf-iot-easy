@@ -149,6 +149,7 @@ static void sw_trigger_task(void* arg) {
       //   break;
       // }
     }
+    vTaskDelay(pdMS_TO_TICKS(sen->conf.min_period_us/10/1000));
   }
 }
 
