@@ -335,7 +335,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.awake=tsl2591_iot_sen_sleep_mode_awake;
     dev->sen.sleep=tsl2591_iot_sen_sleep_mode_sleep;
 
-    dev->sen.status.delay_start_get_us = 620000*3;
+    dev->sen.status.delay_start_get_us = 0;
     dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
@@ -844,7 +844,7 @@ esp_err_t tsl2591_set_integration_time(tsl2591_t *dev, tsl2591_integration_time_
     CHECK_ARG(dev);
     tsl2591_integration_time_t it;
     uint8_t *ctrl_reg;
-    
+
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
     // Last 3 bits represent the integration time.
