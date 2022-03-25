@@ -498,7 +498,6 @@ static inline esp_err_t tsl2591_test_gain(tsl2591_t *dev) {
         return ESP_ERR_INVALID_STATE;
       } else {
         ESP_LOGI(TAG,"Reached maximum gain!");
-        return ESP_OK;
       }
     } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
       if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx > 0) {
@@ -517,7 +516,6 @@ static inline esp_err_t tsl2591_test_gain(tsl2591_t *dev) {
         ESP_LOGW(TAG,"Sensor saturated!");
         ESP_LOGD(TAG,"dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx: %u",dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx);
         //TODO: add flag to data to indicate saturation!
-        return ESP_OK;
       }
     }
   }
@@ -527,99 +525,18 @@ static inline esp_err_t tsl2591_test_gain(tsl2591_t *dev) {
 // Measure.
 esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1) {
     tsl2591_gain_t gain;
-    int64_t timestamp;
     struct timeval tv;
     CHECK_ARG(dev && channel0 &&  channel1);
-    if((dev->settings.enable_reg & (TSL2591_POWER_ON | TSL2591_ALS_ON)) != (TSL2591_POWER_ON | TSL2591_ALS_ON))
-      tsl2591_basic_enable(dev);
+    if(tsl2591_test_gain(dev)!=ESP_OK)
+      return ESP_FAIL;
 
     CHECK(tsl2591_get_ch_data(dev,channel0,channel1));
-    // I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
-    //
-    // I2C_DEV_CHECK(&dev->i2c_dev, read_register16(dev, TSL2591_REG_C0DATAL, channel0));
-    // I2C_DEV_CHECK(&dev->i2c_dev, read_register16(dev, TSL2591_REG_C1DATAL, channel1));
-    //
-    // I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-  	// gettimeofday(&tv, NULL);
-  	// timestamp = (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL)) ;
-  	// timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-    // timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-    timestamp = esp_timer_get_time();
-    sen_agc_change_type_t agc_change = 0;
-    ESP_LOGD(TAG,"channel0: %u",*channel0);
-    ESP_LOGD(TAG,"channel1: %u",*channel1);
-    agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
-    agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
-    // while(agc_change != SEN_AGC_CHANGE_NOP) {
-    if(agc_change != SEN_AGC_CHANGE_NOP) {
-      ESP_LOGI(TAG,"agc_change: %u",agc_change);
-      if(agc_change==SEN_AGC_CHANGE_UP)
-      {
-        if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx < dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.val_nr-1)
-        {
-          ESP_LOGD(TAG,"Gain too low. Adjusting gain UP...");
-          if(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx+1, &gain) != ESP_OK)
-            return ESP_FAIL;
-          tsl2591_set_gain(dev,gain);
-          // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
-          // tsl2591_get_ch_data(dev, channel0, channel1);
-          // agc_change = 0;
-          // agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
-          // agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
-          return ESP_ERR_INVALID_STATE;
-        } else {
-          ESP_LOGI(TAG,"Reached maximum gain!");
-          dev->sen.esp_timestamp = timestamp;
-          tsl2591_basic_disable(dev);
-
-          dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
-          dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
-          // dev->sen.outs[TSL2591_OUT_CH2_ID].m_raw = (*channel0 - *channel1);
-          // break;
-        }
-      } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
-        if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx > 0)
-        {
-          ESP_LOGD(TAG,"Gain too high. Adjusting gain DOWN...");
-          if(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx-1, &gain) != ESP_OK)
-            return ESP_FAIL;
-          tsl2591_set_gain(dev,gain);
-          // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
-          // tsl2591_get_ch_data(dev, channel0, channel1);
-          // agc_change = 0;
-          // agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)*channel0);
-          // agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)*channel1);
-          return ESP_ERR_INVALID_STATE;
-        }
-        else
-        {
-          ESP_LOGW(TAG,"Sensor saturated!");
-          ESP_LOGD(TAG,"dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx: %u",dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx);
-          // gettimeofday(&tv, NULL);
-          // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-          dev->sen.esp_timestamp = timestamp;
-          dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
-          dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
-          // dev->sen.outs[TSL2591_OUT_CH2_ID].m_raw = (*channel0 - *channel1);
-          tsl2591_basic_disable(dev);
-          //TODO: add flag to data to indicate saturation!
-          // return ESP_OK;
-        }
-      }
-    }
-    else
-    {
-    // gettimeofday(&tv, NULL);
-    // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-      dev->sen.esp_timestamp = timestamp;
-      tsl2591_basic_disable(dev);
-
-      dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
-      dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
-      // dev->sen.outs[TSL2591_OUT_CH2_ID].m_raw = (*channel0 - *channel1);
-    // dev->sen.outs[TSL2591_OUT_CH0_ID].timestamp = dev->sen.outs[TSL2591_OUT_CH1_ID].timestamp = timestamp;
-    }
+    dev->sen.esp_timestamp = esp_timer_get_time();
+    dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
+    dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
+    tsl2591_basic_disable(dev);
+  
     return ESP_OK;
 }
 
