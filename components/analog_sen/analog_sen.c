@@ -95,6 +95,63 @@ static inline analog_sen_att_t idx2att(uint8_t idx) {
   }
 }
 
+static inline esp_err_t analog_sen_test_att(analog_sen_t *dev) {
+  sen_agc_change_type_t agc_change = 0;
+  analog_sen_att_t att;
+  if (dev->adc_unit == ADC_UNIT_1) {
+      agc_change = sensor_out_agc_change(dev->sen.outs[0], (uint32_t)adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio));
+  } else {
+      int raw;
+      adc2_get_raw((adc2_channel_t)dev->sen.outs[0].gpio, dev->sen.outs[0].gpio, &raw);
+      agc_change = sensor_out_agc_change(dev->sen.outs[0], raw);
+  }
+  // uint16_t adc_reading = 0;
+  // while(agc_change !=  SEN_AGC_CHANGE_NOP) {
+  if(agc_change !=  SEN_AGC_CHANGE_NOP) {
+    ESP_LOGI(TAG,"agc_change: %u",agc_change);
+    if(agc_change==SEN_AGC_CHANGE_UP)
+    {
+      if(dev->sen.outs[0].atts_agc.idx < dev->sen.outs[0].atts_agc.val_nr-1)
+      {
+        ESP_LOGI(TAG,"Attenuation too low. Adjusting att UP...");
+        analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx+1);
+        return ESP_ERR_INVALID_STATE;
+      }
+      else {
+        ESP_LOGW(TAG,"Sensor saturated!");
+        ESP_LOGD(TAG,"dev->sen.outs[0].atts_agc.idx: %u",dev->sen.outs[0].atts_agc.idx);
+        // gettimeofday(&tv, NULL);
+        // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+        // dev->sen.esp_timestamp = esp_timer_get_time();
+        // dev->sen.outs[0].m_raw = adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
+        //TODO: add flag to data to indicate saturation!
+        // return ESP_OK;
+      }
+    } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
+      if(dev->sen.outs[0].atts_agc.idx > 0)
+      {
+        ESP_LOGI(TAG,"Attenuation too high. Adjusting att DOWN...");
+        analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx-1);
+        return ESP_ERR_INVALID_STATE;
+      }
+      else
+      {
+        ESP_LOGI(TAG,"Reached minimum attenuation!");
+        // break;
+      }
+    }
+    // if (dev->adc_unit == ADC_UNIT_1) {
+    //     agc_change = sensor_out_agc_change(dev->sen.outs[0], (uint32_t)adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio));
+    // } else {
+    //     int raw;
+    //     adc2_get_raw((adc2_channel_t)dev->sen.outs[0].gpio, ADC_WIDTH_BIT_12, &raw);
+    //     agc_change = sensor_out_agc_change(dev->sen.outs[0], raw);
+    // }
+  }
+  return ESP_OK;
+}
+
+
 // Initialization.
 esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel, adc_unit_t unit, \
                                 uint8_t samples_filter, uint32_t period_ms, \
@@ -116,7 +173,7 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     dev->sen.conf.samples_filter = samples_filter;
     // dev->sen.conf.period_ms=nearest_prime(CONFIG_ANALOG_DEFAULT_PERIOD_MS);
     dev->sen.conf.period_ms=nearest_prime(nearest_prime(period_ms/1000)*1000);
-    dev->sen.conf.min_period_us = 1000;
+    dev->sen.conf.min_period_us = samples_filter*5000;
     dev->sen.status.delay_start_get_us = samples_filter*5000;
     dev->sen.info.out_nr = 1;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
@@ -193,47 +250,8 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
     }
     // uint16_t adc_reading = 0;
     // while(agc_change !=  SEN_AGC_CHANGE_NOP) {
-    if(agc_change !=  SEN_AGC_CHANGE_NOP) {
-      ESP_LOGI(TAG,"agc_change: %u",agc_change);
-      if(agc_change==SEN_AGC_CHANGE_UP)
-      {
-        if(dev->sen.outs[0].atts_agc.idx < dev->sen.outs[0].atts_agc.val_nr-1)
-        {
-          ESP_LOGI(TAG,"Attenuation too low. Adjusting att UP...");
-          analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx+1);
-          return ESP_ERR_INVALID_STATE;
-        }
-        else {
-          ESP_LOGW(TAG,"Sensor saturated!");
-          ESP_LOGD(TAG,"dev->sen.outs[0].atts_agc.idx: %u",dev->sen.outs[0].atts_agc.idx);
-        	// gettimeofday(&tv, NULL);
-          // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-          // dev->sen.esp_timestamp = esp_timer_get_time();
-          // dev->sen.outs[0].m_raw = adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio);
-          //TODO: add flag to data to indicate saturation!
-          // return ESP_OK;
-        }
-      } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
-        if(dev->sen.outs[0].atts_agc.idx > 0)
-        {
-          ESP_LOGI(TAG,"Attenuation too high. Adjusting att DOWN...");
-          analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx-1);
-          return ESP_ERR_INVALID_STATE;
-        }
-        else
-        {
-          ESP_LOGI(TAG,"Reached minimum attenuation!");
-          // break;
-        }
-      }
-      // if (dev->adc_unit == ADC_UNIT_1) {
-      //     agc_change = sensor_out_agc_change(dev->sen.outs[0], (uint32_t)adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio));
-      // } else {
-      //     int raw;
-      //     adc2_get_raw((adc2_channel_t)dev->sen.outs[0].gpio, ADC_WIDTH_BIT_12, &raw);
-      //     agc_change = sensor_out_agc_change(dev->sen.outs[0], raw);
-      // }
-    }
+    if(analog_sen_test_att(dev)!=ESP_OK)
+      return ESP_FAIL;
     //Multisampling
     int64_t m_mon = esp_timer_get_time();
     for (uint8_t i = 0; i < dev->sen.conf.samples_filter; i++) {
@@ -317,12 +335,13 @@ esp_err_t analog_sen_iot_sen_start_measurement(void *dev) {
 }
 
 esp_err_t analog_sen_iot_sen_get_data(void *dev) {
+  return analog_sen_test_att((analog_sen_t*) dev);
   // esp_err_t ret;
   // uint16_t channel0, channel1;
   // ret = analog_sen_get_channel_data((analog_sen_t*) dev, &channel0, &channel1);
   // if(ret!=ESP_OK) return ret;
   // return analog_sen_calculate_lux();
-  return ESP_OK;
+  // return ESP_OK;
 }
 
 esp_err_t analog_sen_iot_sen_sleep_mode_awake(void *dev) {
