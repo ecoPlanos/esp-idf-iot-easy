@@ -171,7 +171,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.info.version = 1;
   dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL;
   dev->sen.conf.min_period_us = min_period_us;
-  dev->sen.status.delay_start_get_us = 0;
+  dev->sen.conf.delay_start_get_us = 0;
   dev->sen.info.out_nr = 1;
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
   dev->sen.conf.addr = 0;

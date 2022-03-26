@@ -112,7 +112,7 @@ const uint32_t gains_max_values[TSL2591_GAINS_NR] = {65535,65535,65535,65535};
 const int32_t gains_min_values[TSL2591_GAINS_NR] = {0,0,0,0};
 const float gains_th_h[TSL2591_GAINS_NR] = {0.93,0.93,0.93,0.93};
 const float gains_th_l[TSL2591_GAINS_NR] = {0.02,0.02,0.02,0.02};
-const uint32_t int_times[TSL2591_INTEGRATION_TIMES_NR] = {120,220,320,420,520,620};
+const uint32_t int_times[TSL2591_INTEGRATION_TIMES_NR] = {100,200,300,400,500,600};
 const uint32_t itimes_max_values[TSL2591_INTEGRATION_TIMES_NR] = {37888,65535,65535,65535,65535,65535};
 const int32_t itimes_min_values[TSL2591_INTEGRATION_TIMES_NR] = {0,0,0,0,0,0};
 const float itimes_th_h[TSL2591_INTEGRATION_TIMES_NR] = {0.70,0.75,0.80,0.85,0.90,0.95};
@@ -201,9 +201,11 @@ static inline esp_err_t read_control_register(tsl2591_t *dev, uint8_t *value) {
       break;
       default:
         i_idx=0;
+        return ESP_FAIL;
       break;
     }
-    dev->sen.conf.delay_after_awake_us = int_times[i_idx]*1000;
+    dev->sen.conf.delay_after_awake_us = (int_times[i_idx]+20)*1000;
+    dev->sen.conf.delay_start_get_us = (int_times[i_idx]+20)*1000;
     dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
     dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
@@ -223,6 +225,7 @@ static inline esp_err_t read_control_register(tsl2591_t *dev, uint8_t *value) {
       break;
       default:
         i_idx=3;
+        return ESP_FAIL;
       break;
     }
     dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx=i_idx;
@@ -335,7 +338,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.awake=tsl2591_iot_sen_sleep_mode_awake;
     dev->sen.sleep=tsl2591_iot_sen_sleep_mode_sleep;
 
-    dev->sen.status.delay_start_get_us = 0;
+    dev->sen.conf.delay_start_get_us = 120000;
     dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
@@ -527,8 +530,8 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
     tsl2591_gain_t gain;
     struct timeval tv;
     CHECK_ARG(dev && channel0 &&  channel1);
-    if(tsl2591_test_gain(dev)!=ESP_OK)
-      return ESP_FAIL;
+    // if(tsl2591_test_gain(dev)!=ESP_OK)
+    //   return ESP_FAIL;
 
     CHECK(tsl2591_get_ch_data(dev,channel0,channel1));
 
@@ -536,7 +539,7 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
     dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw = *channel0;
     dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw = *channel1;
     tsl2591_basic_disable(dev);
-  
+
     return ESP_OK;
 }
 
@@ -763,42 +766,19 @@ esp_err_t tsl2591_set_integration_time(tsl2591_t *dev, tsl2591_integration_time_
     uint8_t *ctrl_reg;
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
-
     // Last 3 bits represent the integration time.
     I2C_DEV_CHECK(&dev->i2c_dev,
         write_control_register(dev, (dev->settings.control_reg & ~0x07) | integration_time));
     dev->settings.control_reg = (dev->settings.control_reg & ~0x07) | integration_time;
-
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-    uint8_t i_idx;
-    switch(integration_time)
-    {
-      case TSL2591_INTEGRATION_100MS:
-        i_idx=0;
-      break;
-      case TSL2591_INTEGRATION_200MS:
-        i_idx=1;
-      break;
-      case TSL2591_INTEGRATION_300MS:
-        i_idx=2;
-      break;
-      case TSL2591_INTEGRATION_400MS:
-        i_idx=3;
-      break;
-      case TSL2591_INTEGRATION_500MS:
-        i_idx=4;
-      break;
-      case TSL2591_INTEGRATION_600MS:
-        i_idx=5;
-      break;
-      default:
-        i_idx=0;
-      break;
-    }
+    vTaskDelay(pdMS_TO_TICKS(1));
+
+    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
     I2C_DEV_CHECK(&dev->i2c_dev,
       read_control_register(dev, &ctrl_reg));
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+
     CHECK(idx2itime(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx, &it));
     if(integration_time!=it) {
       ESP_LOGE(TAG, "Integration time didn't update!");
@@ -817,34 +797,6 @@ esp_err_t tsl2591_get_integration_time(tsl2591_t *dev, tsl2591_integration_time_
 
     // Last 3 bits represent the integration time.
     *integration_time = dev->settings.control_reg & 0x07;
-    uint8_t i_idx;
-    switch(*integration_time)
-    {
-      case TSL2591_INTEGRATION_100MS:
-        i_idx=0;
-      break;
-      case TSL2591_INTEGRATION_200MS:
-        i_idx=1;
-      break;
-      case TSL2591_INTEGRATION_300MS:
-        i_idx=2;
-      break;
-      case TSL2591_INTEGRATION_400MS:
-        i_idx=3;
-      break;
-      case TSL2591_INTEGRATION_500MS:
-        i_idx=4;
-      break;
-      case TSL2591_INTEGRATION_600MS:
-        i_idx=5;
-      break;
-      default:
-        i_idx=0;
-      break;
-    }
-    dev->sen.conf.delay_after_awake_us = int_times[i_idx]*1000;
-    dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
     return ESP_OK;
 }
@@ -856,47 +808,24 @@ esp_err_t tsl2591_set_gain(tsl2591_t *dev, tsl2591_gain_t gain) {
     CHECK_ARG(dev);
     if(gain > TSL2591_GAIN_MAX || gain < TSL2591_GAIN_LOW)
       return ESP_ERR_INVALID_ARG;
-    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
+    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
     I2C_DEV_CHECK(&dev->i2c_dev,
       write_control_register(dev, (dev->settings.control_reg & (~TSL2591_GAIN_MAX)) | (gain & TSL2591_GAIN_MAX)));
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
     vTaskDelay(pdMS_TO_TICKS(1));
-    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
+    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
     I2C_DEV_CHECK(&dev->i2c_dev,
       read_control_register(dev, &ctrl_reg));
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+
     CHECK(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx, &g));
     if(gain!=g) {
       ESP_LOGE(TAG, "Gain didn't update!");
       return ESP_FAIL;
     }
-    // dev->settings.control_reg = (dev->settings.control_reg & (~TSL2591_GAIN_MAX)) | (gain & TSL2591_GAIN_MAX);
-    //
-    // uint8_t g_idx;
-    // switch(gain)
-    // {
-    //   case TSL2591_GAIN_LOW:
-    //     g_idx=0;
-    //   break;
-    //   case TSL2591_GAIN_MEDIUM:
-    //     g_idx=1;
-    //   break;
-    //   case TSL2591_GAIN_HIGH:
-    //     g_idx=2;
-    //   break;
-    //   case TSL2591_GAIN_MAX:
-    //     g_idx=3;
-    //   break;
-    //   default:
-    //     g_idx=0;
-    //   break;
-    // }
-    //
-    // dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx=g_idx;
-    // dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc.idx=g_idx;
 
     return ESP_OK;
 }

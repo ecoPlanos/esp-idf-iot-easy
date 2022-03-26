@@ -585,7 +585,7 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.info.version = 1;
   dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
   dev->sen.conf.min_period_us = 0;
-  dev->sen.status.delay_start_get_us = 100000;
+  dev->sen.conf.delay_start_get_us = 100000;
   dev->sen.conf.delay_after_awake_us = 100000;
   dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
@@ -800,7 +800,7 @@ esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration) {
     // and not for the typical durations and therefore tends to be too long, this
     // should not be a problem. Therefore, only one additional tick used.
     *duration += 1;
-    dev->sen.status.delay_start_get_us = pdTICKS_TO_MS(*duration)*1000+100000;
+    dev->sen.conf.delay_start_get_us = pdTICKS_TO_MS(*duration)*1000;
 
     return ESP_OK;
 }

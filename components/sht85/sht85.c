@@ -221,7 +221,7 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 0;
-    dev->sen.status.delay_start_get_us = 2000;
+    dev->sen.conf.delay_start_get_us = 2000;
     dev->sen.info.out_nr = 2; //temperature, RH
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.addr = SHT85_I2C_ADDRESS;
@@ -269,7 +269,7 @@ esp_err_t sht85_init(sht85_t *dev) {
 
   dev->repeatability = SINGLE_MEAS_HIGH;
   dev->heater = SHT85_HEATER_OFF;
-  dev->sen.status.delay_start_get_us=get_duration_ms(dev)*1000;
+  dev->sen.conf.delay_start_get_us=get_duration_ms(dev)*1000;
 
   ret = sht85_reset(dev);
   if(ret != ESP_OK) {

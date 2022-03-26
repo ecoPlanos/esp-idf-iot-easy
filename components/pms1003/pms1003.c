@@ -310,7 +310,7 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 0;
-    dev->sen.status.delay_start_get_us = 500000;
+    dev->sen.conf.delay_start_get_us = 500000;
     dev->sen.info.out_nr = 12;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.period_ms=nearest_prime(nearest_prime(CONFIG_PMS1003_DEFAULT_PERIOD_MS/1000)*1000);

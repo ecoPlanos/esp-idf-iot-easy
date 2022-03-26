@@ -174,7 +174,7 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     // dev->sen.conf.period_ms=nearest_prime(CONFIG_ANALOG_DEFAULT_PERIOD_MS);
     dev->sen.conf.period_ms=nearest_prime(nearest_prime(period_ms/1000)*1000);
     dev->sen.conf.min_period_us = samples_filter*5000;
-    dev->sen.status.delay_start_get_us = samples_filter*5000;
+    dev->sen.conf.delay_start_get_us = 10000;
     dev->sen.info.out_nr = 1;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.timestamp=0;
@@ -325,6 +325,10 @@ esp_err_t analog_sen_get_att(analog_sen_t *dev, analog_sen_att_t *att) {
 
 // IoT Dev specific functions
 esp_err_t analog_sen_iot_sen_start_measurement(void *dev) {
+  return analog_sen_test_att((analog_sen_t*) dev);
+}
+
+esp_err_t analog_sen_iot_sen_get_data(void *dev) {
   analog_sen_t *analog_dev = (analog_sen_t *)dev;
   uint16_t voltage;
   analog_sen_get_channel_data(analog_dev);
@@ -332,16 +336,6 @@ esp_err_t analog_sen_iot_sen_start_measurement(void *dev) {
   analog_dev->calc_processed(&analog_dev->sen);
 
   return ESP_OK;
-}
-
-esp_err_t analog_sen_iot_sen_get_data(void *dev) {
-  return analog_sen_test_att((analog_sen_t*) dev);
-  // esp_err_t ret;
-  // uint16_t channel0, channel1;
-  // ret = analog_sen_get_channel_data((analog_sen_t*) dev, &channel0, &channel1);
-  // if(ret!=ESP_OK) return ret;
-  // return analog_sen_calculate_lux();
-  // return ESP_OK;
 }
 
 esp_err_t analog_sen_iot_sen_sleep_mode_awake(void *dev) {
