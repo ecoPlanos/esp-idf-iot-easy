@@ -482,7 +482,7 @@ static inline esp_err_t tsl2591_test_gain(tsl2591_t *dev) {
   tsl2591_gain_t gain;
   if((dev->settings.enable_reg & (TSL2591_POWER_ON | TSL2591_ALS_ON)) != (TSL2591_POWER_ON | TSL2591_ALS_ON))
     tsl2591_basic_enable(dev);
-  if(tsl2591_get_ch_data(dev, &channel0, &channel1) != ESP_OK) return ESP_FAIL;
+  CHECK(tsl2591_get_ch_data(dev, &channel0, &channel1));
   agc_change = sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH0_ID], (uint32_t)channel0);
   agc_change &= sensor_out_agc_change(dev->sen.outs[TSL2591_OUT_CH1_ID], (uint32_t)channel1);
   if(agc_change != SEN_AGC_CHANGE_NOP) {
@@ -490,9 +490,8 @@ static inline esp_err_t tsl2591_test_gain(tsl2591_t *dev) {
     if(agc_change==SEN_AGC_CHANGE_UP) {
       if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx < dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.val_nr-1) {
         ESP_LOGD(TAG,"Gain too low. Adjusting gain UP...");
-        if(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx+1, &gain) != ESP_OK)
-          return ESP_FAIL;
-        if(tsl2591_set_gain(dev,gain) != ESP_OK) return ESP_FAIL;
+        CHECK(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx+1, &gain));
+        CHECK(tsl2591_set_gain(dev,gain));
         // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
         // tsl2591_get_ch_data(dev, channel0, channel1);
         // agc_change = 0;
@@ -505,9 +504,8 @@ static inline esp_err_t tsl2591_test_gain(tsl2591_t *dev) {
     } else if(agc_change==SEN_AGC_CHANGE_DOWN) {
       if(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx > 0) {
         ESP_LOGD(TAG,"Gain too high. Adjusting gain DOWN...");
-        if(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx-1, &gain) != ESP_OK)
-          return ESP_FAIL;
-        if(tsl2591_set_gain(dev,gain) != ESP_OK) return ESP_FAIL;
+        CHECK(idx2gain(dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc.idx-1, &gain));
+        CHECK(tsl2591_set_gain(dev,gain));
         // vTaskDelay(pdMS_TO_TICKS(dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.values[dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx]+20));
         // tsl2591_get_ch_data(dev, channel0, channel1);
         // agc_change = 0;

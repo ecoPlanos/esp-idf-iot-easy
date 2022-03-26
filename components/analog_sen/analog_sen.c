@@ -114,7 +114,7 @@ static inline esp_err_t analog_sen_test_att(analog_sen_t *dev) {
       if(dev->sen.outs[0].atts_agc.idx < dev->sen.outs[0].atts_agc.val_nr-1)
       {
         ESP_LOGI(TAG,"Attenuation too low. Adjusting att UP...");
-        analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx+1);
+        CHECK(analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx+1));
         return ESP_ERR_INVALID_STATE;
       }
       else {
@@ -131,7 +131,7 @@ static inline esp_err_t analog_sen_test_att(analog_sen_t *dev) {
       if(dev->sen.outs[0].atts_agc.idx > 0)
       {
         ESP_LOGI(TAG,"Attenuation too high. Adjusting att DOWN...");
-        analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx-1);
+        CHECK(analog_sen_set_att(dev,dev->sen.outs[0].atts_agc.idx-1));
         return ESP_ERR_INVALID_STATE;
       }
       else
@@ -241,17 +241,17 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
     struct timeval tv;
     sen_agc_change_type_t agc_change;
     uint32_t adc_reading_mean = 0;
-    if (dev->adc_unit == ADC_UNIT_1) {
-        agc_change = sensor_out_agc_change(dev->sen.outs[0], (uint32_t)adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio));
-    } else {
-        int raw;
-        adc2_get_raw((adc2_channel_t)dev->sen.outs[0].gpio, dev->sen.outs[0].gpio, &raw);
-        agc_change = sensor_out_agc_change(dev->sen.outs[0], raw);
-    }
+    // if (dev->adc_unit == ADC_UNIT_1) {
+    //     agc_change = sensor_out_agc_change(dev->sen.outs[0], (uint32_t)adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio));
+    // } else {
+    //     int raw;
+    //     adc2_get_raw((adc2_channel_t)dev->sen.outs[0].gpio, dev->sen.outs[0].gpio, &raw);
+    //     agc_change = sensor_out_agc_change(dev->sen.outs[0], raw);
+    // }
     // uint16_t adc_reading = 0;
     // while(agc_change !=  SEN_AGC_CHANGE_NOP) {
-    if(analog_sen_test_att(dev)!=ESP_OK)
-      return ESP_FAIL;
+    // if(analog_sen_test_att(dev)!=ESP_OK)
+    //   return ESP_FAIL;
     //Multisampling
     int64_t m_mon = esp_timer_get_time();
     for (uint8_t i = 0; i < dev->sen.conf.samples_filter; i++) {
@@ -304,16 +304,16 @@ esp_err_t analog_sen_get_voltage(analog_sen_t *dev, uint16_t adc_reading, uint16
 
 
 esp_err_t analog_sen_set_att(analog_sen_t *dev, analog_sen_att_t att) {
-    CHECK_ARG(dev);
-    if (dev->adc_unit == ADC_UNIT_1) {
-        adc1_config_channel_atten(dev->sen.outs[0].gpio, att);
-    } else {
-        adc2_config_channel_atten((adc2_channel_t)dev->sen.outs[0].gpio, att);
-    }
+  CHECK_ARG(dev);
+  if (dev->adc_unit == ADC_UNIT_1) {
+    CHECK(adc1_config_channel_atten(dev->sen.outs[0].gpio, att));
+  } else {
+    CHECK(adc2_config_channel_atten((adc2_channel_t)dev->sen.outs[0].gpio, att));
+  }
 
-    dev->sen.outs[0].atts_agc.idx=att;
+  dev->sen.outs[0].atts_agc.idx=att;
 
-    return ESP_OK;
+  return ESP_OK;
 }
 
 esp_err_t analog_sen_get_att(analog_sen_t *dev, analog_sen_att_t *att) {
