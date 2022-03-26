@@ -177,7 +177,7 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
   dev->sen.info.out_nr = 3; //hcho, RH, temperature
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = SFA30_I2C_ADDRESS;
-  dev->sen.conf.period_ms = nearest_prime(nearest_prime(CONFIG_SFA30_DEFAULT_PERIOD_MS/1000)*1000);
+  dev->sen.conf.period_ms = nearest_prime(CONFIG_SFA30_DEFAULT_PERIOD_MS);
   dev->sen.conf.delay_after_awake_us=100000;
   dev->sen.dev=dev;
   dev->sen.reset=sfa30_iot_sen_reset;

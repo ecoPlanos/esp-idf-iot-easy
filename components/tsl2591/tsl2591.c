@@ -326,7 +326,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
 
     dev->sen.conf.min_period_us = 110000;
     dev->sen.conf.addr = TSL2591_I2C_ADDR;
-    dev->sen.conf.period_ms=nearest_prime(nearest_prime(CONFIG_TSL2591_DEFAULT_PERIOD_MS/1000)*1000);
+    dev->sen.conf.period_ms=nearest_prime(CONFIG_TSL2591_DEFAULT_PERIOD_MS);
     dev->sen.conf.srate=0;
 
     dev->sen.timestamp=0;

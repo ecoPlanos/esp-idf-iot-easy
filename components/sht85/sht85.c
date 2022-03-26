@@ -225,7 +225,7 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.info.out_nr = 2; //temperature, RH
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.addr = SHT85_I2C_ADDRESS;
-    dev->sen.conf.period_ms = nearest_prime(nearest_prime(CONFIG_SHT85_DEFAULT_PERIOD_MS*1000)/1000);
+    dev->sen.conf.period_ms = nearest_prime(CONFIG_SHT85_DEFAULT_PERIOD_MS);
     dev->sen.conf.delay_after_awake_us=100000;
     dev->sen.dev=dev;
     dev->sen.reset=sht85_iot_sen_reset;
