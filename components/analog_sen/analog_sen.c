@@ -176,6 +176,7 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     dev->sen.conf.min_period_us = samples_filter*5000;
     dev->sen.conf.delay_start_get_us = 10000;
     dev->sen.conf.delay_after_awake_us = 10000;
+    dev->sen.conf.time_to_adjust_us = 10000*(ANALOG_SEN_ATTS_NR+1);
     dev->sen.info.out_nr = 1;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.timestamp=0;
@@ -186,6 +187,8 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     dev->sen.start_measurement=analog_sen_iot_sen_start_measurement;
     dev->sen.get_data=analog_sen_iot_sen_get_data;
     dev->sen.awake=analog_sen_iot_sen_sleep_mode_awake;
+    // dev->sen.gain_adjust=analog_sen_iot_sen_gain_adjust;
+    dev->sen.gain_adjust=analog_sen_iot_sen_start_measurement;
     dev->sen.sleep=analog_sen_iot_sen_sleep_mode_sleep;
 
     dev->sen.status.initialized = false;

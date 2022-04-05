@@ -305,12 +305,13 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     strncpy(dev->sen.info.name, "PMS1003\0", 8);
     // dev->sen.conf.delay_after_awake_us = (uint32_t) (CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS*1000);
     dev->sen.conf.delay_after_awake_us = 35000000;
+    dev->sen.conf.time_to_adjust_us = 0;
+    dev->sen.conf.delay_start_get_us = 500000;
     dev->sen.info.lib_id = SEN_PMS1003_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 0;
-    dev->sen.conf.delay_start_get_us = 500000;
     dev->sen.info.out_nr = 12;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.period_ms=nearest_prime(CONFIG_PMS1003_DEFAULT_PERIOD_MS);
