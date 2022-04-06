@@ -204,9 +204,9 @@ static inline esp_err_t read_control_register(tsl2591_t *dev, uint8_t *value) {
         return ESP_FAIL;
       break;
     }
-    dev->sen.conf.delay_after_awake_us = (int_times[i_idx]+20)*1000;
-    dev->sen.conf.time_to_adjust_us = (int_times[i_idx]+20)*1000*(TSL2591_GAINS_NR+1);
-    dev->sen.conf.delay_start_get_us = (int_times[i_idx]+20)*1000;
+    dev->sen.conf.delay_after_awake_us = (int_times[i_idx]+50)*1000;
+    dev->sen.conf.time_to_adjust_us = (int_times[i_idx]+50)*1000*(TSL2591_GAINS_NR+1);
+    dev->sen.conf.delay_start_get_us = (int_times[i_idx]+50)*1000;
     dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
     dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
@@ -341,7 +341,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     // dev->sen.gain_adjust=tsl2591_iot_sen_gain_adjust;
     dev->sen.sleep=tsl2591_iot_sen_sleep_mode_sleep;
 
-    dev->sen.conf.delay_start_get_us = 120000;
+    dev->sen.conf.delay_start_get_us = 650000;
     dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;

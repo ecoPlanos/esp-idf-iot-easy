@@ -585,7 +585,7 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.info.version = 1;
   dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
   dev->sen.conf.min_period_us = 0;
-  dev->sen.conf.delay_start_get_us = 100000;
+  dev->sen.conf.delay_start_get_us = 1000000;
   dev->sen.conf.delay_after_awake_us = 100000;
   dev->sen.conf.time_to_adjust_us = 0;
   dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
@@ -728,15 +728,15 @@ esp_err_t bme680_init_sensor(bme680_t *dev) {
     CHECK(bme680_use_heater_profile(dev, 0));
 
     bme680_get_measurement_duration(dev, &dev->sen.status.delay_m_us);
-    dev->sen.status.delay_m_us=pdTICKS_TO_MS(dev->sen.status.delay_m_us)*1000LL;
+    dev->sen.status.delay_m_us=pdTICKS_TO_MS(dev->sen.status.delay_m_us)*1000LL+50;
     return ESP_OK;
 }
 
 esp_err_t bme680_force_measurement(bme680_t *dev) {
     CHECK_ARG(dev);
     if (dev->meas_started) {
-        ESP_LOGE(TAG, "Measurement is already running");
-        return ESP_OK;
+      ESP_LOGE(TAG, "Measurement is already running");
+      return ESP_OK;
     }
 
     // Set the power mode to forced mode to trigger one TPHG measurement cycle
@@ -744,7 +744,7 @@ esp_err_t bme680_force_measurement(bme680_t *dev) {
             "Could not set forced mode to start TPHG measurement cycle");
     dev->meas_started = true;
     dev->meas_status = 0;
-    dev->sen.esp_timestamp = esp_timer_get_time();
+    dev->sen.esp_timestamp = esp_timer_get_time()+dev->sen.conf.delay_start_get_us;
 
     ESP_LOGD(TAG, "Started measurement");
 
@@ -789,7 +789,8 @@ esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration) {
 
     // some ms tolerance
     *duration += 5;
-    *duration += 50;
+    // *duration += 50;
+    dev->sen.conf.delay_start_get_us = (*duration)*1000+50;
 
     // ceil to next integer value that is divisible by portTICK_PERIOD_MS and
     // compute RTOS ticks (1 ... portTICK_PERIOD_MS =  1 tick)
@@ -801,7 +802,6 @@ esp_err_t bme680_get_measurement_duration(bme680_t *dev, uint32_t *duration) {
     // and not for the typical durations and therefore tends to be too long, this
     // should not be a problem. Therefore, only one additional tick used.
     *duration += 1;
-    dev->sen.conf.delay_start_get_us = pdTICKS_TO_MS(*duration)*1000;
 
     return ESP_OK;
 }
