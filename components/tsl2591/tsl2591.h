@@ -58,8 +58,7 @@ extern "C" {
 
 #define TSL2591_I2C_ADDR   0x29 // TSL2591 has only one i2c address.
 
-typedef enum
-{
+enum {
   TSL2591_OUT_CH0_ID = 0,
   TSL2591_OUT_CH1_ID,
   TSL2591_OUT_CH2_ID
@@ -68,8 +67,7 @@ typedef enum
 /**
  * Power status. The sensor measures only if ALS an Power is on.
  */
-typedef enum
-{
+typedef enum {
   TSL2591_POWER_OFF = 0x00,
   TSL2591_POWER_ON = 0x01 //!< Default
 } tsl2591_power_status_t;
@@ -77,8 +75,7 @@ typedef enum
 /**
  * ALS status. The sensor measures only if ALS and Power is on.
  */
-typedef enum
-{
+typedef enum {
   TSL2591_ALS_OFF = 0x00,
   TSL2591_ALS_ON = 0x02   //!< Default
 } tsl2591_als_status_t;
@@ -87,8 +84,7 @@ typedef enum
  * Interrupts. TSL2591 has two interrupt sources.
  * Check the datasheet for details.
  */
-typedef enum
-{
+typedef enum {
   TSL2591_INTR_OFF = 0x00, //!< Default
   TSL2591_ALS_INTR_ON = 0x10,
   TSL2591_ALS_INTR_NP_ON = 0x80,
@@ -98,8 +94,7 @@ typedef enum
 /**
  * Interrupt sleep setting.
  */
-typedef enum
-{
+typedef enum {
   TSL2591_SLEEP_AFTER_OFF = 0x00, //!< Default
   TSL2591_SLEEP_AFTER_ON = 0x40
 } tsl2591_sleep_after_intr_t;
@@ -107,8 +102,7 @@ typedef enum
 /**
  * Integration time.
  */
-typedef enum
-{
+typedef enum {
   TSL2591_INTEGRATION_100MS = 0, //!< Default
   TSL2591_INTEGRATION_200MS,
   TSL2591_INTEGRATION_300MS,
@@ -120,8 +114,7 @@ typedef enum
 /**
  * Gain.
  */
-typedef enum
-{
+typedef enum {
   TSL2591_GAIN_LOW = 0x00, //!< Default
   TSL2591_GAIN_MEDIUM = 0x10,
   TSL2591_GAIN_HIGH = 0x20,
@@ -131,8 +124,7 @@ typedef enum
 /**
  * Persistence filter.
  */
-typedef enum
-{
+typedef enum {
   TSL2591_EVERY_CYCLE = 0, //!< Default
   TSL2591_NO_PERSIST,
   TSL2591_2_CYCLES,
@@ -154,8 +146,7 @@ typedef enum
 /**
  * Device info
  */
-typedef enum
-{
+typedef enum {
   TSL2591_REGISTER_PACKAGE_PID = 0x11,    // Package Identification
   TSL2591_REGISTER_DEVICE_ID = 0x12,      // Device Identification
   TSL2591_REGISTER_DEVICE_STATUS = 0x13,  // Internal Status
@@ -164,8 +155,7 @@ typedef enum
 /**
  * Device settings.
  */
-typedef struct
-{
+typedef struct {
   uint8_t enable_reg;
   uint8_t control_reg;
   uint8_t persistence_reg;
@@ -174,8 +164,7 @@ typedef struct
 /**
  * Device info.
  */
-typedef struct
-{
+typedef struct {
   uint8_t pack_id;    // Package Identification
   uint8_t dev_id;     // Device Identification
   uint8_t status;
@@ -184,8 +173,7 @@ typedef struct
 /**
  * Device descriptor.
  */
-typedef struct
-{
+typedef struct {
   i2c_dev_t i2c_dev;
   tsl2591_settings_t settings;
   tsl2591_inf_t info;

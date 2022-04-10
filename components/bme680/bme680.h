@@ -74,8 +74,7 @@ extern "C" {
 #define BME680_HEATER_PROFILES         10   //!< max. 10 heater profiles 0 ... 9
 #define BME680_HEATER_NOT_USED         -1   //!< heater not used profile
 
-typedef enum
-{
+enum {
   BME680_OUT_TEMP_ID = 0,
   BME680_OUT_PRESSURE_ID,
   BME680_OUT_RH_ID,
@@ -84,8 +83,7 @@ typedef enum
 /**
  * Fixed point sensor values (fixed THPG values)
  */
-typedef struct
-{
+typedef struct {
     int16_t temperature;     //!< temperature in degree C * 100 (Invalid value INT16_MIN)
     uint32_t pressure;       //!< barometric pressure in Pascal (Invalid value 0)
     uint32_t humidity;       //!< relative humidity in % * 1000 (Invalid value 0)
@@ -95,8 +93,7 @@ typedef struct
 /**
  * Floating point sensor values (real THPG values)
  */
-typedef struct
-{
+typedef struct {
     float temperature;    //!< temperature in degree C        (Invalid value -327.68)
     float pressure;       //!< barometric pressure in hPascal (Invalid value 0.0)
     float humidity;       //!< relative humidity in %         (Invalid value 0.0)

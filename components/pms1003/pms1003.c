@@ -177,7 +177,7 @@ static inline esp_err_t read_res_nolock(pms1003_t *dev, pms1003_raw_data_t *res)
     ESP_LOGE(TAG, "Couldn't find a message.");
     return ESP_FAIL;
   }
-  read_len = uart_read_bytes(dev->uart_dev.port, res8, FRAME_LENGTH, 1420 / portTICK_PERIOD_MS);
+  read_len = uart_read_bytes(dev->uart_dev.port, res8, FRAME_LENGTH, pdMS_TO_TICKS(1420));
   if(read_len < FRAME_LENGTH) {
     ESP_LOGE(TAG,"Couldn't get all bytes! Got %u/%u expected.",read_len,FRAME_LENGTH);
     return ESP_FAIL;
@@ -515,7 +515,7 @@ esp_err_t pms1003_start_measurement(pms1003_t *dev) {
   CHECK(exec_cmd(dev,cmd, 0));
   dev->meas_start_time = esp_timer_get_time();
   dev->meas_started = true;
-  dev->sen.esp_timestamp=esp_timer_get_time();  //Scince we are going to wait a bit before reading the serial bus, it is more accurate to add timestamp here...
+  // dev->sen.esp_timestamp=esp_timer_get_time();  //Scince we are going to wait a bit before reading the serial bus, it is more accurate to add timestamp here...
   // uint8_t cmd[7];
   // uint16_t check = 0;
   // cmd[0] = START_BYTE_1;
@@ -579,19 +579,16 @@ size_t pms1003_get_measurement_duration(pms1003_t *dev) {
 esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
     CHECK_ARG(dev);
     int64_t timestamp;
-    struct timeval tv;
 
     ESP_LOGD(TAG, "pms1003_get_raw_data");
     if (is_measuring(dev)) {
       ESP_LOGE(TAG, "Measurement is still running");
       return ESP_ERR_INVALID_STATE;
     }
-    // gettimeofday(&tv, NULL);
 
     CHECK(read_res(dev, raw));
     // timestamp=esp_timer_get_time();
     // dev->sen.esp_timestamp=esp_timer_get_time();
-    // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;  //TODO: change timestamping using temporary variables and measurement delay calculation
     dev->meas_started = false;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw = raw->pm1_0_con_unit;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw = raw->pm2_5_con_unit;
@@ -605,6 +602,7 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].m_raw = raw->particle_nr_2_5_um;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].m_raw = raw->particle_nr_5_0_um;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].m_raw = raw->particle_nr_10_um;
+    dev->sen.esp_timestamp=dev->sen.meas_started_us+dev->sen.conf.delay_start_get_us;
     // print_raw_values(dev);
     return ESP_OK;
 }
@@ -632,19 +630,14 @@ esp_err_t pms1003_get_results(pms1003_t *dev) {
 }
 
 esp_err_t pms1003_iot_sen_start_measurement(void *dev) {
-  // esp_err_t err;
-  pms1003_raw_data_t raw;
   return pms1003_start_measurement((pms1003_t *)dev);
-  // return tsl2591_get_lux((tsl2591_t*) dev,&lux);
-  // return ESP_OK;
 }
 
 esp_err_t pms1003_iot_sen_get_data(void *dev) {
   esp_err_t ret;
   pms1003_raw_data_t raw;
-  ret = pms1003_get_raw_data(dev,&raw);
-  if(ret==ESP_OK) return pms1003_compute_values(dev, &raw);
-  return ret;
+  CHECK(pms1003_get_raw_data(dev,&raw));
+  return pms1003_compute_values(dev, &raw);
   // return pms1003_measure((pms1003_t *)dev, &raw);
   // return tsl2591_get_lux((tsl2591_t*) dev,&lux);
   // return ESP_OK;

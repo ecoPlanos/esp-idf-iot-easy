@@ -179,17 +179,17 @@ static esp_err_t read_res(sht85_t *dev, sht85_raw_data_t res) {
   return ESP_OK;
 }
 
-static esp_err_t exec_cmd(sht85_t *dev, uint16_t cmd, size_t delay_ticks, sht85_raw_data_t res) {
-  I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
-  I2C_DEV_CHECK(&dev->i2c_dev, send_cmd_nolock(dev, cmd));
-  if (delay_ticks)
-      vTaskDelay(delay_ticks);
-  I2C_DEV_CHECK(&dev->i2c_dev, read_res_nolock(dev, res));
-  I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
-  ESP_LOGD(TAG,"exec_cmd_res: %u, %u, %u, %u, %u, %u", res[0], res[1], res[2], res[3], res[4], res[5]);
-
-  return ESP_OK;
-}
+// static esp_err_t exec_cmd(sht85_t *dev, uint16_t cmd, size_t delay_ticks, sht85_raw_data_t res) {
+//   I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
+//   I2C_DEV_CHECK(&dev->i2c_dev, send_cmd_nolock(dev, cmd));
+//   if (delay_ticks)
+//       vTaskDelay(delay_ticks);
+//   I2C_DEV_CHECK(&dev->i2c_dev, read_res_nolock(dev, res));
+//   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+//   ESP_LOGD(TAG,"exec_cmd_res: %u, %u, %u, %u, %u, %u", res[0], res[1], res[2], res[3], res[4], res[5]);
+//
+//   return ESP_OK;
+// }
 
 static inline bool is_measuring(sht85_t *dev) {
     // not running if measurement is not started
@@ -277,7 +277,7 @@ esp_err_t sht85_init(sht85_t *dev) {
     ESP_LOGE(TAG, "Error on reset.");
     return ret;
   }
-  sht85_raw_data_t s;
+  // sht85_raw_data_t s;
   vTaskDelay(pdMS_TO_TICKS(2)); //Power-up delay (t_PU)
   // CHECK(exec_cmd(dev, CMD_SERIAL, pdMS_TO_TICKS(10), s));
   // ret = exec_cmd(dev, CMD_SERIAL, pdMS_TO_TICKS(2), s);
@@ -301,11 +301,9 @@ esp_err_t sht85_reset(sht85_t *dev) {
 }
 
 esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity) {
-  struct timeval tv;
   CHECK_ARG(dev && (temperature || humidity));
 
   sht85_raw_data_t raw;
-  // gettimeofday(&tv, NULL);
   CHECK(send_cmd(dev, get_single_shot_meas_cmd(dev)));
   vTaskDelay(pdMS_TO_TICKS(2));
 
@@ -357,7 +355,6 @@ size_t sht85_get_measurement_duration(sht85_t *dev) {
 
 esp_err_t sht85_get_raw_data(sht85_t *dev, sht85_raw_data_t raw) {
   CHECK_ARG(dev);
-  esp_err_t ret;
   if (is_measuring(dev)) {
     ESP_LOGE(TAG, "sht85_get_raw_data - Measurement is still running");
     return ESP_ERR_INVALID_STATE;

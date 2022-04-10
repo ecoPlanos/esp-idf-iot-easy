@@ -58,7 +58,7 @@ extern "C" {
 #define SHT85_RAW_DATA_SIZE 6
 // #define SHT85_RAW_DATA_SIZE 6*2
 
-typedef enum
+enum
 {
   SHT85_OUT_TEMP_ID = 0,
   SHT85_OUT_RH_ID

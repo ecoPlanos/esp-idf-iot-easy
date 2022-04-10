@@ -58,8 +58,7 @@ extern "C" {
 #define SFA30_RAW_DATA_SIZE 9
 #define SFA30_MARKING_DATA_SIZE 48
 
-typedef enum
-{
+enum {
   SFA30_OUT_HCHO_ID = 0,
   SFA30_OUT_RH_ID,
   SFA30_OUT_TEMP_ID

@@ -33,10 +33,10 @@ static const char *TAG = "analog_sen";
 #define SLEEP_MS(x) do { vTaskDelay(pdMS_TO_TICKS(x)); } while (0)
 
 const uint32_t atts[ANALOG_SEN_ATTS_NR] = {ADC_ATTEN_DB_0, ADC_ATTEN_DB_2_5, ADC_ATTEN_DB_6, ADC_ATTEN_DB_11};
-const uint32_t atts_max_values[ANALOG_SEN_ATTS_NR] = {4096,4096,4096,4096};
+const uint32_t atts_max_values[ANALOG_SEN_ATTS_NR] = {4095,4095,4095,4095};
 const int32_t atts_min_values[ANALOG_SEN_ATTS_NR] = {0,0,0,0};
 const float atts_th_h[ANALOG_SEN_ATTS_NR] = {0.85,0.85,0.85,0.85};
-const float atts_th_l[ANALOG_SEN_ATTS_NR] = {0.25,0.25,0.25,0.25};
+const float atts_th_l[ANALOG_SEN_ATTS_NR] = {0.20,0.20,0.20,0.20};
 
 static void check_efuse(void)
 {
