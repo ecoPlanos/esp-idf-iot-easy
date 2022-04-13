@@ -250,7 +250,7 @@ static inline bool is_measuring(pms1003_t *dev) {
 
     // not running if time elapsed is greater than duration
     uint64_t elapsed = esp_timer_get_time() - dev->meas_start_time;
-    return elapsed < dev->sen.conf.min_period_us;
+    return (elapsed < dev->sen.conf.delay_start_get_us);
 }
 
 static inline void print_raw_values(pms1003_t *dev) {
@@ -445,6 +445,7 @@ esp_err_t pms1003_init(pms1003_t *dev) {
   // }
   //
   CHECK(pms1003_reset(dev));
+  vTaskDelay(30000);
   uint8_t cmd[7];
   uart_flush(dev->uart_dev.port);
   CHECK(pms1003_set_data_mode(dev, PMS1003_DATA_MODE_PASSIVE));
@@ -475,7 +476,7 @@ esp_err_t pms1003_reset(pms1003_t *dev) {
     dev->meas_started = false;
 
     // TODO: reset sensor using GPIO
-    vTaskDelay(1);
+    // vTaskDelay(1);
 
     return ESP_OK;
 }
@@ -572,13 +573,13 @@ esp_err_t pms1003_toggle_sleep_mode(pms1003_t *dev) {
 size_t pms1003_get_measurement_duration(pms1003_t *dev) {
     if (!dev) return 0;
 
-    size_t res = pdMS_TO_TICKS(dev->sen.conf.min_period_us/1000);
+    size_t res = pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000);
     return res == 0 ? 1 : res;
 }
 
 esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
     CHECK_ARG(dev);
-    int64_t timestamp;
+    // int64_t timestamp;
 
     ESP_LOGD(TAG, "pms1003_get_raw_data");
     if (is_measuring(dev)) {
@@ -636,8 +637,9 @@ esp_err_t pms1003_iot_sen_start_measurement(void *dev) {
 esp_err_t pms1003_iot_sen_get_data(void *dev) {
   esp_err_t ret;
   pms1003_raw_data_t raw;
-  CHECK(pms1003_get_raw_data(dev,&raw));
-  return pms1003_compute_values(dev, &raw);
+  // CHECK(pms1003_get_raw_data(dev,&raw));
+  // return pms1003_compute_values(dev, &raw);
+  return pms1003_get_results((pms1003_t *)dev);
   // return pms1003_measure((pms1003_t *)dev, &raw);
   // return tsl2591_get_lux((tsl2591_t*) dev,&lux);
   // return ESP_OK;
@@ -664,12 +666,12 @@ esp_err_t pms1003_iot_sen_sleep_mode_awake(void *dev) {
   uint8_t cmd[7];
   pms1003_t *dev_ = (pms1003_t *)dev;
   // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) || dev_->sen.status.sleeping) {
-  if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) {
+  // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) {
     CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_AWAKE));
     CHECK(exec_cmd(dev_,cmd,0));
     dev_->status.sleep_mode = PMS1003_SLEEP_MODE_AWAKE;
     // dev_->sen.status.sleeping = false;
-  }
+  // }
   return ESP_OK;
 }
 
@@ -677,12 +679,12 @@ esp_err_t pms1003_iot_sen_sleep_mode_sleep(void *dev) {
   uint8_t cmd[7];
   pms1003_t *dev_ = (pms1003_t *)dev;
   // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) || (!dev_->sen.status.sleeping)) {
-  if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP))) {
+  // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP))) {
     CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_SLEEP));
     CHECK(exec_cmd(dev_,cmd,0));
     dev_->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
     // dev_->sen.status.sleeping = false;
-  }
+  // }
   return ESP_OK;
 }
 
