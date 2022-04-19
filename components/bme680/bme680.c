@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bme680.h"
+#include "bsec_interface.h"
 
 #define I2C_FREQ_HZ 1000000 // Up to 3.4MHz, but esp-idf only supports 1MHz TODO: adjust pull-up resistors to get higher clock rates
 // #define I2C_FREQ_HZ 100000 // Up to 3.4MHz, but esp-idf only supports 1MHz TODO: adjust pull-up resistors to get higher clock rates
@@ -1080,8 +1081,69 @@ esp_err_t bme680_iot_sen_start_measurement(void *dev) {
 }
 
 esp_err_t bme680_iot_sen_get_data(void *dev) {
+  bme680_t *dev_ = (bme680_t *) dev;
+  uint8_t n_outputs;
+  bsec_library_return_t status;
+  bsec_input_t inputs[4];
+  bsec_output_t outputs[14];
   bme680_values_float_t bme680_values_float;
-  return bme680_get_results_float((bme680_t*) dev, &bme680_values_float);
+  CHECK(bme680_get_results_float((bme680_t*) dev, &bme680_values_float));
+  inputs[0].time_stamp = dev_->sen.timestamp;
+  inputs[1].time_stamp = dev_->sen.timestamp;
+  inputs[2].time_stamp = dev_->sen.timestamp;
+  inputs[3].time_stamp = dev_->sen.timestamp;
+  inputs[0].signal = bme680_values_float.temperature;
+  inputs[1].signal = bme680_values_float.pressure;
+  inputs[2].signal = bme680_values_float.humidity;
+  inputs[3].signal = bme680_values_float.gas_resistance;
+  inputs[0].signal_dimensions = 1;
+  inputs[1].signal_dimensions = 1;
+  inputs[2].signal_dimensions = 1;
+  inputs[3].signal_dimensions = 1;
+  inputs[0].sensor_id = BSEC_INPUT_TEMPERATURE;
+  inputs[1].sensor_id = BSEC_INPUT_PRESSURE;
+  inputs[2].sensor_id = BSEC_INPUT_HUMIDITY;
+  inputs[3].sensor_id = BSEC_INPUT_GASRESISTOR;
+  status=BSEC_E_DOSTEPS_INVALIDINPUT;
+  status = bsec_do_steps(inputs, 4, outputs, &n_outputs);
+  if(status == BSEC_OK) {
+    for(int i = 0; i < 4; i++) {
+      ESP_LOGD(TAG, "BSEC out[%u] returned sensor id: %d",i,outputs[i].sensor_id);
+      switch(outputs[i].sensor_id) {
+        case BSEC_OUTPUT_IAQ:
+          // Retrieve the IAQ results from output[i].signal
+          // and do something with the data
+        break;
+        case BSEC_OUTPUT_STATIC_IAQ:
+        break;
+        case BSEC_OUTPUT_CO2_EQUIVALENT:
+        break;
+        case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
+        break;
+        case BSEC_OUTPUT_RAW_TEMPERATURE:
+        break;
+        case BSEC_OUTPUT_RAW_PRESSURE:
+        break;
+        case BSEC_OUTPUT_RAW_HUMIDITY:
+        break;
+        case BSEC_OUTPUT_RAW_GAS:
+        break;
+        case BSEC_OUTPUT_STABILIZATION_STATUS:
+        break;
+        case BSEC_OUTPUT_RUN_IN_STATUS:
+        break;
+        case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE:
+        break;
+        case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY:
+        break;
+        case BSEC_OUTPUT_COMPENSATED_GAS:
+        break;
+        case BSEC_OUTPUT_GAS_PERCENTAGE:
+        break;
+      }
+    }
+  }
+  return ESP_OK;
 }
 
 esp_err_t bme680_iot_sen_sleep_mode_awake(void *dev) {
