@@ -306,7 +306,7 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     // dev->sen.conf.delay_after_awake_us = (uint32_t) (CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS*1000);
     dev->sen.conf.delay_after_awake_us = 35000000;
     dev->sen.conf.time_to_adjust_us = 0;
-    dev->sen.conf.delay_start_get_us = 500000;
+    dev->sen.conf.delay_start_get_us = 100000;
     dev->sen.info.lib_id = SEN_PMS1003_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
@@ -663,28 +663,28 @@ esp_err_t pms1003_iot_sen_toggle_sleep_mode(void *dev) {
 }
 
 esp_err_t pms1003_iot_sen_sleep_mode_awake(void *dev) {
-  uint8_t cmd[7];
-  pms1003_t *dev_ = (pms1003_t *)dev;
-  // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) || dev_->sen.status.sleeping) {
-  // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) {
-    CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_AWAKE));
-    CHECK(exec_cmd(dev_,cmd,0));
-    dev_->status.sleep_mode = PMS1003_SLEEP_MODE_AWAKE;
-    // dev_->sen.status.sleeping = false;
-  // }
+  // uint8_t cmd[7];
+  // pms1003_t *dev_ = (pms1003_t *)dev;
+  // // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) || dev_->sen.status.sleeping) {
+  // // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) {
+  //   CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_AWAKE));
+  //   CHECK(exec_cmd(dev_,cmd,0));
+  //   dev_->status.sleep_mode = PMS1003_SLEEP_MODE_AWAKE;
+  //   // dev_->sen.status.sleeping = false;
+  // // }
   return ESP_OK;
 }
 
 esp_err_t pms1003_iot_sen_sleep_mode_sleep(void *dev) {
-  uint8_t cmd[7];
-  pms1003_t *dev_ = (pms1003_t *)dev;
-  // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) || (!dev_->sen.status.sleeping)) {
-  // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP))) {
-    CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_SLEEP));
-    CHECK(exec_cmd(dev_,cmd,0));
-    dev_->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
-    // dev_->sen.status.sleeping = false;
-  // }
+  // uint8_t cmd[7];
+  // pms1003_t *dev_ = (pms1003_t *)dev;
+  // // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) || (!dev_->sen.status.sleeping)) {
+  // // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP))) {
+  //   CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_SLEEP));
+  //   CHECK(exec_cmd(dev_,cmd,0));
+  //   dev_->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
+  //   // dev_->sen.status.sleeping = false;
+  // // }
   return ESP_OK;
 }
 

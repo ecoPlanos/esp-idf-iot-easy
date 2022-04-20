@@ -580,6 +580,8 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
 #endif
   memset(&dev->sen, 0, sizeof(sensor_t));
   sensor_init(&dev->sen,4);
+  // sensor_init(&dev->sen,18);
+  // sensor_init(&dev->sen,8);
   strncpy(dev->sen.info.name, "BME680\0", 7);
   dev->sen.info.lib_id = SEN_BME680_LIB_ID;
   dev->sen.info.sen_id = sen_id;
@@ -590,6 +592,8 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.conf.delay_after_awake_us = 100000;
   dev->sen.conf.time_to_adjust_us = 0;
   dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
+  // dev->sen.info.out_nr = 18; //temperature, pressure, RH, gas + BSEC processed outputs
+  // dev->sen.info.out_nr = 8; //temperature, pressure, RH, gas + BSEC processed outputs
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = BME680_I2C_ADDR_0;
   dev->sen.conf.period_ms=nearest_prime(CONFIG_BME680_DEFAULT_PERIOD_MS);
@@ -633,7 +637,103 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.outs[BME680_OUT_GAS_ID].resistance=0.0;
   // dev->sen.outs[BME680_OUT_GAS_ID].conf.srate=0;
 
-  dev->sen.conf.srate=0;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_id=BME680_BSEC_OUT_IAQ_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_type=SEN_TYPE_GAS;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].out_id=BME680_BSEC_OUT_STATIC_IAQ_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].out_type=SEN_TYPE_GAS;
+  // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].out_id=BME680_BSEC_OUT_CO2_EQUIVALENT_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].out_type=SEN_TYPE_CO2;
+  // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].out_id=BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].out_type=SEN_TYPE_VOC;
+  // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].out_id=BME680_BSEC_OUT_RAW_TEMPERATURE_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].out_id=BME680_BSEC_OUT_RAW_PRESSURE_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].out_type=SEN_TYPE_PRESSURE;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].out_id=BME680_BSEC_OUT_RAW_HUMIDITY_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].out_id=BME680_BSEC_OUT_RAW_GAS_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].out_type=SEN_TYPE_GAS;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].out_id=BME680_BSEC_OUT_RAW_GAS_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].out_type=SEN_TYPE_STATUS;
+  // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].out_id=BME680_BSEC_OUT_RAW_GAS_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].out_type=SEN_TYPE_STATUS;
+  // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].out_id=BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].out_id=BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].out_id=BME680_BSEC_OUT_COMPENSATED_GAS_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].out_type=SEN_TYPE_GAS;
+  // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].out_id=BME680_BSEC_OUT_GAS_PERCENTAGE_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].out_type=SEN_TYPE_GAS;
+  // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].resistance=0.0;
+  //
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_id=BME680_BSEC_OUT_IAQ_ID;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_type=SEN_TYPE_GAS;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].m_raw=0;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].resistance=0.0;
+
+  // dev->sen.conf.srate=0;
+  // if(bsec_init() != BSEC_OK){
+  //   ESP_LOGE(TAG,"Error initializing BSEC library!");
+  //   return ESP_FAIL;
+  // }
+  // bsec_bme_settings_t sen_settings;
+  // bsec_sensor_control(dev->sen.timestamp, &sen_settings);
   return i2c_dev_create_mutex(&dev->i2c_dev);
 }
 
@@ -730,6 +830,30 @@ esp_err_t bme680_init_sensor(bme680_t *dev) {
 
     bme680_get_measurement_duration(dev, &dev->sen.status.delay_m_us);
     dev->sen.status.delay_m_us=pdTICKS_TO_MS(dev->sen.status.delay_m_us)*1000LL+50;
+
+    // bsec_sensor_configuration_t requested_virtual_sensors[4];
+    // uint8_t n_requested_virtual_sensors = 4;
+    //
+    // requested_virtual_sensors[0].sensor_id = BSEC_OUTPUT_IAQ;
+    // requested_virtual_sensors[0].sample_rate = BSEC_SAMPLE_RATE_ULP;
+    // requested_virtual_sensors[1].sensor_id = BSEC_OUTPUT_STATIC_IAQ;
+    // requested_virtual_sensors[1].sample_rate = BSEC_SAMPLE_RATE_ULP;
+    // requested_virtual_sensors[2].sensor_id = BSEC_OUTPUT_CO2_EQUIVALENT;
+    // requested_virtual_sensors[2].sample_rate = BSEC_SAMPLE_RATE_ULP;
+    // requested_virtual_sensors[3].sensor_id = BSEC_OUTPUT_BREATH_VOC_EQUIVALENT;
+    // requested_virtual_sensors[3].sample_rate = BSEC_SAMPLE_RATE_ULP;
+    //
+    // // Allocate a struct for the returned physical sensor settings
+    // bsec_sensor_configuration_t required_sensor_settings[BSEC_MAX_PHYSICAL_SENSOR];
+    // uint8_t  n_required_sensor_settings = BSEC_MAX_PHYSICAL_SENSOR;
+    // bsec_library_return_t status;
+    // // Call bsec_update_subscription() to enable/disable the requested virtual sensors
+    // status=bsec_update_subscription(requested_virtual_sensors, n_requested_virtual_sensors, required_sensor_settings, &n_required_sensor_settings);
+    // if(status != BSEC_OK){
+    //   ESP_LOGE(TAG, "Error updating BSEC subscription: %d.",status);
+    //   return ESP_FAIL;
+    // };
+
     return ESP_OK;
 }
 
@@ -1092,57 +1216,80 @@ esp_err_t bme680_iot_sen_get_data(void *dev) {
   inputs[1].time_stamp = dev_->sen.timestamp;
   inputs[2].time_stamp = dev_->sen.timestamp;
   inputs[3].time_stamp = dev_->sen.timestamp;
-  inputs[0].signal = bme680_values_float.temperature;
-  inputs[1].signal = bme680_values_float.pressure;
+  inputs[0].signal = bme680_values_float.gas_resistance;
+  inputs[1].signal = bme680_values_float.temperature;
   inputs[2].signal = bme680_values_float.humidity;
-  inputs[3].signal = bme680_values_float.gas_resistance;
+  inputs[3].signal = bme680_values_float.pressure;
   inputs[0].signal_dimensions = 1;
   inputs[1].signal_dimensions = 1;
   inputs[2].signal_dimensions = 1;
   inputs[3].signal_dimensions = 1;
-  inputs[0].sensor_id = BSEC_INPUT_TEMPERATURE;
-  inputs[1].sensor_id = BSEC_INPUT_PRESSURE;
-  inputs[2].sensor_id = BSEC_INPUT_HUMIDITY;
-  inputs[3].sensor_id = BSEC_INPUT_GASRESISTOR;
-  status=BSEC_E_DOSTEPS_INVALIDINPUT;
-  status = bsec_do_steps(inputs, 4, outputs, &n_outputs);
-  if(status == BSEC_OK) {
-    for(int i = 0; i < 4; i++) {
-      ESP_LOGD(TAG, "BSEC out[%u] returned sensor id: %d",i,outputs[i].sensor_id);
-      switch(outputs[i].sensor_id) {
-        case BSEC_OUTPUT_IAQ:
-          // Retrieve the IAQ results from output[i].signal
-          // and do something with the data
-        break;
-        case BSEC_OUTPUT_STATIC_IAQ:
-        break;
-        case BSEC_OUTPUT_CO2_EQUIVALENT:
-        break;
-        case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
-        break;
-        case BSEC_OUTPUT_RAW_TEMPERATURE:
-        break;
-        case BSEC_OUTPUT_RAW_PRESSURE:
-        break;
-        case BSEC_OUTPUT_RAW_HUMIDITY:
-        break;
-        case BSEC_OUTPUT_RAW_GAS:
-        break;
-        case BSEC_OUTPUT_STABILIZATION_STATUS:
-        break;
-        case BSEC_OUTPUT_RUN_IN_STATUS:
-        break;
-        case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE:
-        break;
-        case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY:
-        break;
-        case BSEC_OUTPUT_COMPENSATED_GAS:
-        break;
-        case BSEC_OUTPUT_GAS_PERCENTAGE:
-        break;
-      }
-    }
-  }
+  inputs[0].sensor_id = BSEC_INPUT_GASRESISTOR;
+  inputs[1].sensor_id = BSEC_INPUT_TEMPERATURE;
+  inputs[2].sensor_id = BSEC_INPUT_PRESSURE;
+  inputs[3].sensor_id = BSEC_INPUT_HUMIDITY;
+  status=BSEC_E_CONFIG_FAIL;
+  ESP_LOGD(TAG, "BSEC status: %d",status);
+  vTaskDelay(pdMS_TO_TICKS(500));
+  // status = bsec_do_steps(inputs, 4, outputs, &n_outputs);
+  // status = bsec_do_steps(inputs, 3, outputs, &n_outputs);
+  // ESP_LOGD(TAG, "BSEC status: %d",status);
+  // vTaskDelay(pdMS_TO_TICKS(500));
+  // if(status == BSEC_OK) {
+  //   for(int i = 0; i < n_outputs; i++) {
+  //     ESP_LOGD(TAG, "BSEC out[%u] returned sensor id: %u",i,outputs[i].sensor_id);
+  //     switch(outputs[i].sensor_id) {
+  //       case BSEC_OUTPUT_IAQ:
+  //         // Retrieve the IAQ results from output[i].signal
+  //         // and do something with the data
+  //         dev_->sen.outs[BME680_BSEC_OUT_IAQ_ID].gas=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_STATIC_IAQ:
+  //         dev_->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].gas=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_CO2_EQUIVALENT:
+  //         dev_->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].co2=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
+  //         dev_->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].voc=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_RAW_TEMPERATURE:
+  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].temperature=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_RAW_PRESSURE:
+  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].pressure=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_RAW_HUMIDITY:
+  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].relative_humidity=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_RAW_GAS:
+  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].gas=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_STABILIZATION_STATUS:
+  //         dev_->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].status=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_RUN_IN_STATUS:
+  //         dev_->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].status=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE:
+  //         dev_->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].temperature=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY:
+  //         dev_->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].relative_humidity=outputs[i].signal;
+  //       break;
+  //       case BSEC_OUTPUT_COMPENSATED_GAS:
+  //         dev_->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].gas=outputs[i].signal;
+  //       break;
+  //         case BSEC_OUTPUT_GAS_PERCENTAGE:
+  //         dev_->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].gas=outputs[i].signal;
+  //       break;
+  //     }
+  //   }
+  // } else {
+  //   ESP_LOGE(TAG, "BSEC status: %d",status);
+  //   vTaskDelay(pdMS_TO_TICKS(500));
+  //   return ESP_FAIL;
+  // }
   return ESP_OK;
 }
 
