@@ -1,0 +1,22 @@
+menu "K30"
+
+config K30_USE_DATA_STORAGE
+    bool "Sensor data storage"
+    default false
+    help
+        Let sensor data be stored.
+
+config K30_USE_CONF_STORAGE
+    bool "Sensor configurations storage"
+    default false
+    help
+        Let sensor data be stored and updated.
+
+config K30_DEFAULT_PERIOD_MS
+    int "Sensor default period (ms)"
+    default 60000
+    range 0 4294967295
+    help
+        Default data acquisition period in milliseconds.
+
+endmenu
