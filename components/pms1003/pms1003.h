@@ -126,6 +126,8 @@ typedef struct {
  */
 typedef struct {
   uint32_t delay_after_awake_ms;    // delay before measuring after a wake from sleep event
+  gpio_num_t rst_pin;
+  gpio_num_t set_pin;
 } pms1003_conf_t;
 
 /**
@@ -153,7 +155,7 @@ typedef struct {
  * @param rx_gpio   RX GPIO
  * @return          ESP_OK` on success
  */
-esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio, gpio_num_t rx_gpio, gpio_num_t rts_io_num, gpio_num_t cts_io_num, int tx_buffer_size, int rx_buffer_size, int queue_size, int intr_alloc_flags, int baud_rate, uart_word_length_t data_bits, uart_parity_t parity, uart_stop_bits_t stop_bits, uart_hw_flowcontrol_t flow_ctrl, uint8_t rx_flow_ctrl_thresh, uart_sclk_t source_clk, uint16_t sen_id);
+esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio, gpio_num_t rx_gpio, gpio_num_t rts_io_num, gpio_num_t cts_io_num, int tx_buffer_size, int rx_buffer_size, int queue_size, int intr_alloc_flags, int baud_rate, uart_word_length_t data_bits, uart_parity_t parity, uart_stop_bits_t stop_bits, uart_hw_flowcontrol_t flow_ctrl, uint8_t rx_flow_ctrl_thresh, uart_sclk_t source_clk, gpio_num_t rst_pin, gpio_num_t set_pin, uint16_t sen_id);
 
 /**
  * @brief Free device descriptor
