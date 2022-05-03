@@ -75,9 +75,12 @@ typedef struct {
  * Device info.
  */
 typedef struct {
-  uint8_t pack_id;    // Package Identification
-  uint8_t dev_id;     // Device Identification
-  uint8_t status;
+  uint8_t fw_type;
+  uint8_t rev_main;
+  uint8_t rev_sub;
+  uint32_t sen_type;
+  uint32_t sen_serial_nr;
+  uint8_t sen_mem_map_id;
 } k30_inf_t;
 
 /**

@@ -45,53 +45,30 @@
 static const char *TAG = "k30";
 
 // Registers
-#define K30_RAM_CO2             0x08
-#define K30_RAM_TEMP            0x12
-#define K30_RAM_RH              0x14
-#define K30_RAM_FW_TYPE         0x62
-#define K30_RAM_REV_MAIN        0x63
-#define K30_RAM_REV_SUB         0x64
-#define K30_RAM_SEN_TYPE        0x2C
-#define K30_RAM_SEN_SERIAL_NR   0x28
-#define K30_RAM_MEM_MAP_ID      0x2F
+#define K30_RAM_CO2             0x0008
+#define K30_RAM_TEMP            0x0012
+#define K30_RAM_RH              0x0014
+#define K30_RAM_FW_TYPE         0x0062
+#define K30_RAM_REV_MAIN        0x0063
+#define K30_RAM_REV_SUB         0x0064
+#define K30_RAM_SEN_TYPE        0x002C
+#define K30_RAM_SEN_SERIAL_NR   0x0028
+#define K30_RAM_MEM_MAP_ID      0x002F
 
 // K30 command register special functions.
 typedef enum {
-  K30_COMMAND_WRITE_RAM =    0x10,
-  K30_COMMAND_READ_RAM =     0x20,
-  K30_COMMAND_WRITE_EEPROM = 0x30,
-  K30_COMMAND_READ_EEPROM =  0x40
+  K30_COMMAND_WRITE_RAM =    0x1,
+  K30_COMMAND_READ_RAM =     0x2,
+  K30_COMMAND_WRITE_EEPROM = 0x3,
+  K30_COMMAND_READ_EEPROM =  0x4
 } k30_command_t;
 
 #define CHECK(x) do { esp_err_t __; if ((__ = x) != ESP_OK) return __; } while (0)
 #define CHECK_ARG(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 #define SLEEP_MS(x) do { vTaskDelay(pdMS_TO_TICKS(x)); } while (0)
 
-// Read/write to registers.
-static inline esp_err_t write_register(k30_t *dev, uint8_t reg, uint8_t value) {
-  esp_err_t err=ESP_OK;
-  ESP_LOGD(TAG, "Writing register: 0x%x", reg);
-  err = i2c_dev_write_reg(&dev->i2c_dev,((reg<<1) | 0x02), &value, 1);
-  if(err != ESP_OK){
-    dev->sen.status.status_code=SEN_STATUS_FAIL_WRITE;
-    dev->sen.status.fail_reg=reg;
-  }
-  return err;
-}
 
-static inline esp_err_t read_register(k30_t *dev, uint8_t reg, uint8_t *value) {
-    esp_err_t err=ESP_OK;
-    err = i2c_dev_read_reg(&dev->i2c_dev,
-      (reg<<1) | 0x02, value, 1);
-    ESP_LOGD(TAG, "Red register: 0x%x; Data: 0x%x.", reg, *value);
-    if(err != ESP_OK){
-      dev->sen.status.status_code=SEN_STATUS_FAIL_READ;
-      dev->sen.status.fail_reg=reg;
-    }
-    return err;
-}
-
-static uint8_t k30_checksum(uint8_t data[], size_t len) {
+static inline uint8_t k30_checksum(uint8_t data[], size_t len) {
   uint8_t checksum = 0x00;
   size_t i;
 
@@ -101,6 +78,48 @@ static uint8_t k30_checksum(uint8_t data[], size_t len) {
   }
   ESP_LOGD(TAG,"checksum: %02x",checksum);
   return checksum;
+}
+
+// Read/write to registers.
+static inline esp_err_t write_ram(k30_t *dev, uint16_t ram_addr, uint8_t *data, uint8_t data_size) {
+  esp_err_t err=ESP_OK;
+  uint8_t out_reg[3];
+  uint8_t out_data[data_size+1];
+
+  out_reg[0]=((K30_COMMAND_WRITE_RAM<<1) | data_size);
+  out_reg[1]=((ram_addr>>1) & 0xFF);
+  out_reg[2]=(ram_addr & 0xFF);
+  memcpy(out_data,data,data_size);
+  out_data[data_size]=k30_checksum(out_reg, 3);
+  out_data[data_size]+=k30_checksum(data, data_size);
+  ESP_LOGD(TAG, "Writing ram address: 0x%x", ram_addr);
+  ESP_LOGD(TAG, "Writing ram address_0: 0x%x", out_data[1]);
+  ESP_LOGD(TAG, "Writing ram address_1: 0x%x", out_data[2]);
+  err = i2c_dev_write(&dev->i2c_dev, out_reg, 3, out_data, data_size+1);
+  if(err != ESP_OK){
+    dev->sen.status.status_code=SEN_STATUS_FAIL_WRITE;
+    dev->sen.status.fail_reg=ram_addr;
+  }
+  return err;
+}
+
+static inline esp_err_t read_ram(k30_t *dev, uint16_t ram_addr, uint8_t *out_data, uint8_t data_size) {
+  esp_err_t err=ESP_OK;
+  uint8_t out_reg[3];
+
+  out_reg[0]=((K30_COMMAND_READ_RAM<<1) | (data_size-1));
+  out_reg[1]=((ram_addr>>1) & 0xFF);
+  out_reg[2]=(ram_addr & 0xFF);
+  err = i2c_dev_read(&dev->i2c_dev, out_data, data_size, out_reg, 3);
+  if(err != ESP_OK){
+    dev->sen.status.status_code=SEN_STATUS_FAIL_WRITE;
+    dev->sen.status.fail_reg=ram_addr;
+  }
+  if(k30_checksum(out_data, data_size-1) != out_data[data_size-1]){
+    ESP_LOGE(TAG, "Checksum check fail! checksum calc: %u, checksum received: %u",k30_checksum(out_data, data_size-1),out_data[data_size-1]);
+    return ESP_ERR_INVALID_CRC;
+  }
+  return err;
 }
 
 // Read 16 bit from two consecutive registers.
@@ -203,7 +222,31 @@ esp_err_t k30_init(k30_t *dev) {
 
     I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
-    uint8_t tmp_reg = 0;
+    uint8_t out_data[1+4+1];
+    I2C_DEV_CHECK(&dev->i2c_dev, read_ram(dev, K30_RAM_FW_TYPE, out_data, 1+1));
+    dev->info.fw_type = out_data[1];
+    ESP_LOGD(TAG,"fw_type: %u",dev->info.fw_type);
+    I2C_DEV_CHECK(&dev->i2c_dev, read_ram(dev, K30_RAM_REV_MAIN, out_data, 1+1));
+    dev->info.rev_main = out_data[1];
+    ESP_LOGD(TAG,"rev_main: %u",dev->info.rev_main);
+    I2C_DEV_CHECK(&dev->i2c_dev, read_ram(dev, K30_RAM_REV_SUB, out_data, 1+1));
+    dev->info.rev_sub = out_data[1];
+    ESP_LOGD(TAG,"rev_sub: %u",dev->info.rev_sub);
+    I2C_DEV_CHECK(&dev->i2c_dev, read_ram(dev, K30_RAM_SEN_TYPE, out_data, 3+1));
+    dev->info.sen_type = (out_data[1]<<(3-1))|(out_data[2]<<(3-2))|out_data[3];
+    ESP_LOGD(TAG,"sen_type: %u",dev->info.sen_type);
+    I2C_DEV_CHECK(&dev->i2c_dev, read_ram(dev, K30_RAM_SEN_SERIAL_NR, out_data, 4+1));
+    dev->info.sen_serial_nr = (out_data[1]<<(4-1))|(out_data[2]<<(4-2))|(out_data[3]<<(4-3))|out_data[4];
+    ESP_LOGD(TAG,"sen_serial_nr: %u",dev->info.sen_serial_nr);
+    I2C_DEV_CHECK(&dev->i2c_dev, read_ram(dev, K30_RAM_MEM_MAP_ID, out_data, 1+1));
+    dev->info.sen_mem_map_id = out_data[1];
+    ESP_LOGD(TAG,"sen_mem_map_id: %u",dev->info.sen_mem_map_id);
+
+
+
+
+
+
     // I2C_DEV_CHECK(&dev->i2c_dev, read_enable_register(dev, &tmp_reg));
     //
     // ESP_LOGD(TAG, "Initial enable register: %x.", tmp_reg);
@@ -232,7 +275,6 @@ esp_err_t k30_init(k30_t *dev) {
 
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-    return ESP_FAIL;
     // if(dev->info.dev_id!=0x50) {
     //   ESP_LOGE(TAG, "Device ID: %x differs from expected ID: %x", tmp_reg,0x50);
     //   dev->sen.status.initialized = false;
@@ -249,31 +291,28 @@ esp_err_t k30_init(k30_t *dev) {
     return ESP_OK;
 }
 
-static inline esp_err_t k30_get_ch_data(k30_t *dev, uint16_t *channel0, uint16_t *channel1) {
+esp_err_t k30_get_co2(k30_t *dev, float *co2) {
+  CHECK_ARG(dev && co2);
+  uint8_t out_data[1+2+1];
   I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
-
-  // I2C_DEV_CHECK(&dev->i2c_dev, read_register16(dev, K30_RAM_C0DATAL, channel0));
-  // I2C_DEV_CHECK(&dev->i2c_dev, read_register16(dev, K30_RAM_C1DATAL, channel1));
-
+  I2C_DEV_CHECK(&dev->i2c_dev, read_ram(dev, K30_RAM_CO2, out_data, 1+2+1));
+  dev->sen.timestamp = esp_timer_get_time();
+  dev->sen.outs[K30_OUT_CO2_ID].m_raw = (out_data[1]<<1)|out_data[2];
+  dev->sen.outs[K30_OUT_CO2_ID].co2 = (float)((int16_t)(dev->sen.outs[K30_OUT_CO2_ID].m_raw&0x0000ffff));
+  *co2 = dev->sen.outs[K30_OUT_CO2_ID].co2;
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
   return ESP_OK;
 }
 
-esp_err_t k30_get_co2(k30_t *dev, float *co2) {
-    esp_err_t err=ESP_OK;
-    CHECK_ARG(dev && co2);
-
-    return err;
-}
-
 esp_err_t k30_basic_enable(k30_t *dev) {
   CHECK_ARG(dev);
-
-  I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
-
-  // I2C_DEV_CHECK(&dev->i2c_dev,
-  //   write_enable_register(dev, dev->settings.enable_reg | K30_ALS_ON | K30_POWER_ON));
-  I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+  float co2;
+  k30_get_co2((k30_t*) dev, &co2);
+  // I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
+  //
+  // // I2C_DEV_CHECK(&dev->i2c_dev,
+  // //   write_enable_register(dev, dev->settings.enable_reg | K30_ALS_ON | K30_POWER_ON));
+  // I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
   return ESP_OK;
 }
@@ -281,7 +320,7 @@ esp_err_t k30_basic_enable(k30_t *dev) {
 esp_err_t k30_basic_disable(k30_t *dev) {
   CHECK_ARG(dev);
 
-  I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
+  // I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
   // I2C_DEV_CHECK(&dev->i2c_dev,
   //   write_enable_register(dev, dev->settings.enable_reg & ~K30_ALS_ON & ~K30_POWER_ON));
 
@@ -289,7 +328,7 @@ esp_err_t k30_basic_disable(k30_t *dev) {
 }
 
 esp_err_t k30_iot_sen_start_measurement(void *dev) {
-  return ESP_FAIL;
+  return ESP_OK;
 }
 
 esp_err_t k30_iot_sen_get_data(void *dev) {
@@ -297,7 +336,7 @@ esp_err_t k30_iot_sen_get_data(void *dev) {
   // uint16_t channel0, channel1;
   float co2, temp, rh;
 
-  // ret = k30_get_co2((k30_t*) dev, &co2);
+  ret = k30_get_co2((k30_t*) dev, &co2);
   return ret;
 }
 
