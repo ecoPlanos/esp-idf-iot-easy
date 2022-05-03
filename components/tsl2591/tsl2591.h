@@ -60,8 +60,7 @@ extern "C" {
 
 enum {
   TSL2591_OUT_CH0_ID = 0,
-  TSL2591_OUT_CH1_ID,
-  TSL2591_OUT_CH2_ID
+  TSL2591_OUT_CH1_ID
 };
 
 /**
@@ -190,7 +189,7 @@ typedef struct {
  * @param scl_gpio SCL GPIO pin
  * @return `ESP_OK` on success
  */
-esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id);
+esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id, char *sen_name);
 
 /**
  * @brief Free device descriptor
@@ -224,16 +223,6 @@ esp_err_t tsl2591_iot_sen_measurement(void *dev);
  */
 esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t *channel1);
 
-/**
- * @brief Calculate light intensity from channels
- *
- * @param dev Device descriptor
- * @param channel0 Channel0 data
- * @param channel1 Channel1 data
- * @param[out] Light intensity in uW/cm^2
- * @return `ESP_OK` on success
- */
-esp_err_t tsl2591_calculate_irradiance(tsl2591_t *dev, uint16_t channel0, uint16_t channel1, float *irradiance);
 /**
  * @brief Calculate light intensity from channels
  *

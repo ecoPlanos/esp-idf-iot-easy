@@ -305,7 +305,7 @@ static inline esp_err_t idx2itime(uint8_t idx, tsl2591_integration_time_t *it) {
 
 
 // Initialization.
-esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id) {
+esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio, uint16_t sen_id, char *sen_name) {
     CHECK_ARG(dev);
     ESP_LOGD(TAG, "Initialize descriptor");
     dev->i2c_dev.port = port;
@@ -317,7 +317,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
 #endif
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,2);
-    strncpy(dev->sen.info.name, "TSL2591\0", 8);
+    strcpy(dev->sen.info.name, sen_name);
     dev->sen.info.lib_id = SEN_TSL2591_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
@@ -372,12 +372,6 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     // dev->sen.outs[TSL2591_OUT_CH1_ID].atts_agc.state = false;
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc, SEN_AGC_TYPE_NONE, TSL2591_INTEGRATION_TIMES_NR, int_times, itimes_max_values,itimes_min_values,itimes_th_h,itimes_th_l));
     // dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.state = true;
-    // dev->sen.outs[TSL2591_OUT_CH2_ID].out_id=TSL2591_OUT_CH2_ID;
-    // dev->sen.outs[TSL2591_OUT_CH2_ID].out_type = SEN_TYPE_LIGHT_VISIBLE;
-    // dev->sen.outs[TSL2591_OUT_CH2_ID].out_val_type = SEN_OUT_VAL_TYPE_UINT16;
-    // dev->sen.outs[TSL2591_OUT_CH2_ID].bit_nr=16;
-    // dev->sen.outs[TSL2591_OUT_CH2_ID].m_raw=0;
-    // dev->sen.outs[TSL2591_OUT_CH2_ID].light_vis=0.0;
 
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
@@ -546,60 +540,6 @@ esp_err_t tsl2591_get_channel_data(tsl2591_t *dev, uint16_t *channel0, uint16_t 
     return ESP_OK;
 }
 
-esp_err_t tsl2591_calculate_irradiance(tsl2591_t *dev, uint16_t channel0, uint16_t channel1, float *irradiance) {
-    CHECK_ARG(dev && irradiance);
-
-    float atime, again;
-    switch (dev->settings.control_reg & 0x07)
-    {
-    case TSL2591_INTEGRATION_100MS:
-        atime = int_times[0];
-        break;
-    case TSL2591_INTEGRATION_200MS:
-        atime = int_times[1];
-        break;
-    case TSL2591_INTEGRATION_300MS:
-        atime = int_times[2];
-        break;
-    case TSL2591_INTEGRATION_400MS:
-        atime = int_times[3];
-        break;
-    case TSL2591_INTEGRATION_500MS:
-        atime = int_times[4];
-        break;
-    case TSL2591_INTEGRATION_600MS:
-        atime = int_times[5];
-        break;
-    default:
-        atime = int_times[0];
-    }
-
-    switch (dev->settings.control_reg & TSL2591_GAIN_MAX)
-    {
-    case TSL2591_GAIN_LOW:
-        again = gains[0];
-        break;
-    case TSL2591_GAIN_MEDIUM:
-        again = gains[1];
-        break;
-    case TSL2591_GAIN_HIGH:
-        again = gains[2];
-        break;
-    case TSL2591_GAIN_MAX:
-        again = gains[3];
-        break;
-    default:
-        again = gains[0];
-    }
-    float cpl = (atime * again) / TSL2591_LUX_DF;
-    *irradiance = (((float)channel0 - (float)channel1)) *
-        (1.0F - ((float)channel1 / (float)channel0)) / cpl;
-    dev->sen.outs[TSL2591_OUT_CH0_ID].light_full = *irradiance;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].light_ir = *irradiance;
-    // dev->sen.outs[TSL2591_OUT_CH2_ID].light_vis = *irradiance;
-    return ESP_OK;
-}
-
 esp_err_t tsl2591_calculate_lux(tsl2591_t *dev, uint16_t channel0, uint16_t channel1, float *lux) {
     CHECK_ARG(dev && lux);
 
@@ -648,24 +588,25 @@ esp_err_t tsl2591_calculate_lux(tsl2591_t *dev, uint16_t channel0, uint16_t chan
     float cpl = (atime * again) / TSL2591_LUX_DF;
     *lux = (((float)channel0 - (float)channel1)) *
         (1.0F - ((float)channel1 / (float)channel0)) / cpl;
-    dev->sen.outs[TSL2591_OUT_CH0_ID].light_full = *lux;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].light_ir = *lux;  //TODO: calculate
-    // dev->sen.outs[TSL2591_OUT_CH2_ID].light_vis = *lux; //TODO: calculate
+    if(*lux) {
+      dev->sen.outs[TSL2591_OUT_CH0_ID].light_full = *lux;
+      dev->sen.outs[TSL2591_OUT_CH1_ID].light_ir = *lux;
+    } else {
+      dev->sen.outs[TSL2591_OUT_CH0_ID].light_full = -1.0;  //TODO: this is just for debug!
+      dev->sen.outs[TSL2591_OUT_CH1_ID].light_ir = -2.0;    //TODO: this is just for debug!
+    }
+
     return ESP_OK;
 }
 
 esp_err_t tsl2591_get_lux(tsl2591_t *dev, float *lux) {
-    esp_err_t err=ESP_OK;
-    CHECK_ARG(dev && lux);
+  CHECK_ARG(dev && lux);
 
-    uint16_t channel0, channel1;
-    err = tsl2591_get_channel_data(dev, &channel0, &channel1);
-    CHECK(err);
+  uint16_t channel0, channel1;
+  CHECK(tsl2591_get_channel_data(dev, &channel0, &channel1));
+  CHECK(tsl2591_calculate_lux(dev, channel0, channel1, lux));
 
-    err = tsl2591_calculate_lux(dev, channel0, channel1, lux);
-    CHECK(err);
-
-    return err;
+  return ESP_OK;
 }
 
 
