@@ -443,6 +443,5 @@ esp_err_t sfa30_iot_sen_reset(void *dev) {
 }
 
 esp_err_t sfa30_iot_sen_reinit(void *dev) {
-  return sfa30_reset((sfa30_t *)dev);
-  // return ESP_OK;
+  return sfa30_init((sfa30_t *)dev);
 }

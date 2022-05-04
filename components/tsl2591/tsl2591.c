@@ -1034,5 +1034,5 @@ esp_err_t tsl2591_iot_sen_reset(void *dev) {
 }
 
 esp_err_t tsl2591_iot_sen_reinit(void *dev) {
-  return ESP_OK;
+  return tsl2591_init((tsl2591_t*)dev);
 }

@@ -1316,5 +1316,5 @@ esp_err_t bme680_iot_sen_reset(void *dev) {
 }
 
 esp_err_t bme680_iot_sen_reinit(void *dev) {
-  return ESP_OK;
+  return bme680_init_sensor((bme680_t*)dev);
 }

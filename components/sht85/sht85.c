@@ -467,5 +467,5 @@ esp_err_t sht85_iot_sen_reset(void *dev) {
 }
 
 esp_err_t sht85_iot_sen_reinit(void *dev) {
-  return ESP_OK;
+  return sht85_init((sht85_t*)dev);
 }
