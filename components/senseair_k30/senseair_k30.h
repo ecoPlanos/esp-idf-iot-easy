@@ -121,7 +121,6 @@ esp_err_t k30_free_desc(k30_t *dev);
  */
 esp_err_t k30_init(k30_t *dev);
 
-
 /**
  * @brief Get CO2 concentration
  *
@@ -131,6 +130,34 @@ esp_err_t k30_init(k30_t *dev);
  */
 esp_err_t k30_get_co2(k30_t *dev, float *co2);
 
+/**
+ * @brief Get temperature
+ *
+ * @param dev Device descriptor
+ * @param[out] co2 CO2 concentration
+ * @return `ESP_OK`
+ */
+esp_err_t k30_get_temp(k30_t *dev, float *temp);
+
+/**
+ * @brief Get relative humidity
+ *
+ * @param dev Device descriptor
+ * @param[out] co2 CO2 concentration
+ * @return `ESP_OK`
+ */
+esp_err_t k30_get_rh(k30_t *dev, float *rh);
+
+/**
+ * @brief Get CO2, temperature and relative humidity
+ *
+ * @param dev Device descriptor
+ * @param[out] co2 CO2 concentration
+ * @param[out] temp Temperature
+ * @param[out] rh relative humidity
+ * @return `ESP_OK`
+ */
+esp_err_t k30_get_all_outputs(k30_t *dev, float *co2, float *temp, float *rh);
 
 /**************************************************************************/
 /*!
