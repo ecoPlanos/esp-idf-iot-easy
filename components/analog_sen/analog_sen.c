@@ -163,9 +163,7 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel,
     dev->calc_processed = calc_processed_func;
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,2);
-    // strncpy(dev->sen.info.name, sen_name, strlen(sen_name));
-    // strncpy(dev->sen.info.name, sen_name, strlen(sen_name));
-    strncpy(dev->sen.info.name, "SLS_BTA\0", 8);
+    strcpy(dev->sen.info.name, sen_name);
     dev->sen.info.lib_id = SEN_ANALOG_SEN_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
