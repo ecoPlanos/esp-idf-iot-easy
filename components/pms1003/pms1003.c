@@ -308,7 +308,7 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     // dev->sen.conf.delay_after_awake_us = (uint32_t) (CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS*1000);
     dev->sen.conf.delay_after_awake_us = 35000000;
     dev->sen.conf.time_to_adjust_us = 0;
-    dev->sen.conf.delay_start_get_us = 100000;
+    dev->sen.conf.delay_start_get_us = 150000;
     dev->sen.info.lib_id = SEN_PMS1003_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
@@ -452,9 +452,9 @@ esp_err_t pms1003_init(pms1003_t *dev) {
   //     goto err_eloop;
   // }
   //
-  CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_SLEEP));
+  // CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_SLEEP));
   CHECK(pms1003_reset(dev));
-  vTaskDelay(30000);
+  vTaskDelay(1000);
   uint8_t cmd[7];
   uart_flush(dev->uart_dev.port);
   CHECK(pms1003_set_data_mode(dev, PMS1003_DATA_MODE_PASSIVE));
@@ -490,6 +490,8 @@ esp_err_t pms1003_reset(pms1003_t *dev) {
     gpio_set_level(dev->conf.rst_pin, 1);
     vTaskDelay(100);
     CHECK(pms1003_set_data_mode(dev, PMS1003_DATA_MODE_PASSIVE));
+
+    uart_flush(dev->uart_dev.port);
 
     return ESP_OK;
 }
@@ -528,6 +530,7 @@ esp_err_t pms1003_start_measurement(pms1003_t *dev) {
   CHECK(get_meas_cmd(cmd));
   CHECK(exec_cmd(dev,cmd, 0));
   dev->meas_start_time = esp_timer_get_time();
+  dev->sen.meas_started_us = dev->meas_start_time;
   dev->meas_started = true;
   // dev->sen.esp_timestamp=esp_timer_get_time();  //Scince we are going to wait a bit before reading the serial bus, it is more accurate to add timestamp here...
   // uint8_t cmd[7];
@@ -608,7 +611,6 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
 
     CHECK(read_res(dev, raw));
     // timestamp=esp_timer_get_time();
-    // dev->sen.esp_timestamp=esp_timer_get_time();
     dev->meas_started = false;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw = raw->pm1_0_con_unit;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw = raw->pm2_5_con_unit;
@@ -711,15 +713,9 @@ esp_err_t pms1003_iot_sen_sleep_mode_sleep(void *dev) {
 }
 
 esp_err_t pms1003_iot_sen_reset(void *dev) {
-  uint8_t cmd[7];
-  pms1003_t *dev_ = (pms1003_t *)dev;
-  pms1003_reset(dev_);
-  return ESP_OK;
+  return pms1003_reset((pms1003_t *)dev);
 }
 
 esp_err_t pms1003_iot_sen_reinit(void *dev) {
-  uint8_t cmd[7];
-  pms1003_t *dev_ = (pms1003_t *)dev;
-
-  return ESP_OK;
+  return pms1003_init((pms1003_t *)dev);
 }
