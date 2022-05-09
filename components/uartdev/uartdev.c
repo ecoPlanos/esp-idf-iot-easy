@@ -184,9 +184,9 @@ static esp_err_t uart_setup_port(const uart_dev_t *dev) {
     if (states[dev->port].installed)
       uart_driver_delete(dev->port);
 
-    CHECK(uart_driver_install(dev->port, dev->rx_buffer_size, dev->tx_buffer_size, dev->queue_size, &dev->queue, dev->intr_alloc_flags));
     CHECK(uart_param_config(dev->port, &temp));
     CHECK(uart_set_pin(dev->port, dev->tx_io_num, dev->rx_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    CHECK(uart_driver_install(dev->port, dev->rx_buffer_size, dev->tx_buffer_size, dev->queue_size, &dev->queue, dev->intr_alloc_flags));
 
     states[dev->port].installed = true;
 

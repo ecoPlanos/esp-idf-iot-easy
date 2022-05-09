@@ -76,6 +76,14 @@ typedef enum {
   PMS1003_OUT_PARTICLE_NR_10_UM_ID        //DATA12
 }pms1003_out_ids_t;
 
+typedef enum{
+  PMS_DECODE_READ_STATE_START1 = 0,
+  PMS_DECODE_READ_STATE_START2,
+  PMS_DECODE_READ_STATE_FRAME_LEN1,
+  PMS_DECODE_READ_STATE_FRAME_LEN2,
+  PMS_DECODE_READ_STATE_DATA
+}pms1003_decode_state_t;
+
 // typedef uint8_t pms1003_raw_data_t[PMS1003_RAW_DATA_SIZE];
 
 typedef struct {
@@ -100,12 +108,13 @@ typedef struct {
  */
 typedef enum {
   PMS1003_DATA_MODE_PASSIVE = 0,    /**Passive mode */
-  PMS1003_DATA_MODE_ACTIVE = 1       /**Active mode */
+  PMS1003_DATA_MODE_ACTIVE,         /**Active mode */
 }pms1003_mode_type_t;
 
 typedef enum {
   PMS1003_SLEEP_MODE_SLEEP = 0,     /**Passive mode */
-  PMS1003_SLEEP_MODE_AWAKE = 1       /**Active mode */
+  PMS1003_SLEEP_MODE_AWAKE,         /**Active mode */
+  PMS1003_SLEEP_MODE_MAX            /**Invalid mode for initialization */
 }pms1003_sleep_type_t;
 
 typedef struct {

@@ -63,7 +63,10 @@ void set_blocking (int fd, int should_block){
     // error_message ("error %d setting term attributes", errno);
 }
 
-
+// request: 42 4d e1 00 00 01 70 -> resp: 42 4d 00 04 e1 00 01 74
+// request: 42 4d e1 00 01 01 71 -> resp: 42 4d 00 04 e1 01 01 75
+// request: 42 4d e4 00 00 01 73 -> resp: 42 4d 00 04 e4 00 01 77
+// request: 42 4d e4 00 01 01 74 -> resp: measurement
 void main(void) {
   char *portname = "/dev/ttyUSB2";
   uint8_t resp[32] = {0x42,0x4d,0x00,0x1c,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xab};
@@ -80,11 +83,6 @@ void main(void) {
     // error_message ("error %d opening %s: %s", errno, portname, strerror (errno));
     return;
   }
-
-  request: 42 4d e1 00 00 01 70 -> resp: 42 4d 00 04 e1 00 01 74
-  request: 42 4d e1 00 01 01 71 -> resp: 42 4d 00 04 e1 01 01 75
-  request: 42 4d e4 00 00 01 73 -> resp: 42 4d 00 04 e4 00 01 77
-  request: 42 4d e4 00 01 01 74 -> resp: measurement
 
   printf("Setting serial port attributes...\n");
   set_interface_attribs (fd, B9600, 0);  // set speed to 9600 bps, 8n1 (no parity)

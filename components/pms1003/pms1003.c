@@ -43,11 +43,10 @@
 #include <string.h>
 #include "pms1003.h"
 
-#define FRAME_LENGTH  28 //(2*13 data bytes + 2 check bytes)
+#define PMS1003_DATA_FRAME_LENGTH  28 //(2*13 data bytes + 2 check bytes)
 #define ANSWER_LENGTH 32 //Sensor reply with 32 byte length message
 
 static const char *TAG = "pms1003";
-
 
 typedef enum {
   START_BYTE_1 = 0x42,
@@ -61,37 +60,26 @@ typedef enum {
   CMD_CHANGE_SLEEP =      0xe4
 } pms1003_commands_t;
 
-// typedef enum {
-//   STATE_READ_FRAME_LENGTH =             0x4d,  //Fame length=2x13+2(data+check bytes)
-//   STATE_READ_PM1_0_CON_UNIT =           0x4d,  //DATA1
-//   STATE_READ_PM2_5_CON_UNIT =           0x4d,  //DATA2
-//   STATE_READ_PM10_CON_UNIT =            0x4d,  //DATA3
-//   STATE_READ_PM1_0_CON_UNIT_ATMOSPHE =  0x4d,  //DATA4
-//   STATE_READ_PM2_5_CON_UNIT_ATMOSPHE =  0x4d,  //DATA5
-//   STATE_READ_CON_UNIT_ATMOSPHE =        0x4d,  //DATA6
-//   STATE_READ_PARTICLE_NR_0_3_UM =       0x4d,  //DATA7
-//   STATE_READ_PARTICLE_NR_0_5_UM =       0x4d,  //DATA8
-//   STATE_READ_PARTICLE_NR_1_0_UM =       0x4d,  //DATA9
-//   STATE_READ_PARTICLE_NR_2_5_UM =       0x4d,  //DATA10
-//   STATE_READ_PARTICLE_NR_5_0_UM =       0x4d,  //DATA11
-//   STATE_READ_PARTICLE_NR_10_UM =        0x4d,  //DATA12
-//   STATE_READ_RESERVED =                 0x4d,  //DATA13
-//   STATE_READ_CHECK =                    0x4d  //Check code = Start character 1 + Start character 2 + ... + data 13 Low 8 bits
-//
-// } pms1003_transport_protocol_active_state_t;
-
 #define CHECK(x) do { esp_err_t __; if ((__ = x) != ESP_OK) {ESP_ERROR_CHECK_WITHOUT_ABORT(__); return __;} } while (0)
 #define CHECK_ARG(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
-static esp_err_t check_code(uint8_t data[], uint8_t len) {
+static esp_err_t check_code(uint8_t data[], uint16_t len) {
     uint16_t sum = len+START_BYTE_1+START_BYTE_2;
 
-    for (size_t i = 0; i < len-2; i++) {
-      sum += data[i];
-    }
-    // ESP_LOGD(TAG, "CRC sum: %u",sum);
+    ESP_LOGD(TAG, "sum: 0x%4x",sum);
+    for (size_t i = 0; i < len-2; i++) sum += data[i];
+
+    ESP_LOGD(TAG, "length: %u",len);
+    ESP_LOGD(TAG, "length[0]: 0x%2x",(len>>8)&0xff);
+    ESP_LOGD(TAG, "length[1]: 0x%2x",(len)&0xff);
+    ESP_LOGD(TAG, "length[0]: 0x%2x",(sum>>8)&0xff);
+    ESP_LOGD(TAG, "length[1]: 0x%2x",(sum)&0xff);
+    ESP_LOGD(TAG, "data[len-2]: 0x%4x",data[len-2]);
+    ESP_LOGD(TAG, "data[len-1]: 0x%4x",data[len-1]);
     if (((data[len-2]<<8)|data[len-1]) != sum) {
         ESP_LOGE(TAG, "Invalid CRC");
+        ESP_LOGD(TAG, "received sum: 0x%4x",((data[len-2]<<8)|data[len-1]));
+        ESP_LOGD(TAG, "sum: 0x%4x",sum);
         return ESP_ERR_INVALID_CRC;
     }
   return ESP_OK;
@@ -105,9 +93,9 @@ static inline esp_err_t get_meas_cmd(uint8_t cmd[]) {
   cmd[3] = 0;
   cmd[4] = 0;
   uint16_t check = cmd[0]+cmd[1]+cmd[2]+cmd[3]+cmd[4];
-  cmd[5] = check>>8;
-  cmd[6] = (check<<8)>>8;
-  ESP_LOGD(TAG, "Sum: %u check_MSB: %u check_LSB: %u", check,cmd[5],cmd[6]);
+  cmd[5] = (check>>8)&0xFF;
+  cmd[6] = check&0xFF;
+  ESP_LOGD(TAG, "Sum: %4x check_MSB: %2x check_LSB: %2x", check, cmd[5], cmd[6]);
   return ESP_OK;
 }
 
@@ -119,8 +107,8 @@ static inline esp_err_t get_set_data_mode_cmd(uint8_t cmd[], pms1003_mode_type_t
   cmd[3] = 0;
   cmd[4] = mode;
   uint16_t check = cmd[0]+cmd[1]+cmd[2]+cmd[3]+cmd[4];
-  cmd[5] = check>>8;
-  cmd[6] = (check<<8)>>8;
+  cmd[5] = (check>>8)&0xFF;
+  cmd[6] = check&0xFF;
   return ESP_OK;
 }
 
@@ -132,8 +120,8 @@ static inline esp_err_t get_set_sleep_mode_cmd(uint8_t cmd[], pms1003_sleep_type
   cmd[3] = 0;
   cmd[4] = sleep;
   uint16_t check = cmd[0]+cmd[1]+cmd[2]+cmd[3]+cmd[4];
-  cmd[5] = check>>8;
-  cmd[6] = (check<<8)>>8;
+  cmd[5] = (check>>8)&0xFF;
+  cmd[6] = check&0xFF;
   return ESP_OK;
 }
 
@@ -142,88 +130,171 @@ static inline esp_err_t send_cmd_nolock(pms1003_t *dev, uint8_t cmd[]) {
     int wr_len = uart_write_bytes(dev->uart_dev.port, cmd, 7);
     if(wr_len < 7) return ESP_FAIL;
     return ESP_OK;
-    // return uart_dev_write(&dev->uart_dev, cmd);
 }
 
 static inline esp_err_t read_res_nolock(pms1003_t *dev, pms1003_raw_data_t *res) {
-  uint8_t res8[FRAME_LENGTH];
+  uint8_t res8[PMS1003_DATA_FRAME_LENGTH];
+  uint8_t in_buff[PMS1003_DATA_FRAME_LENGTH];
   char c;
-  uint8_t start[2] = {0,0};
-  uint8_t frame_len = 0;
-  int read_len;
+  uint8_t frame_len=0;
+  int read_len=0;
+  size_t available=0, start_idx=0, in_idx=0, data_idx=0, i=0;
+  pms1003_decode_state_t decode_state = PMS_DECODE_READ_STATE_START1;
+  esp_err_t err;
   // bool start1 = false;
   // int read_len = uart_read_bytes(dev->uart_dev.port, res8, PMS1003_RAW_DATA_SIZE, 800 / portTICK_PERIOD_MS);
   // res[PMS1003_RAW_DATA_SIZE] = '\0';
   // CHECK(uart_dev_read(&dev->uart_dev, NULL, 0, res8, PMS1003_TOTAL_DATA_SIZE));
-  while(uart_read_bytes(dev->uart_dev.port, &c, 1, pdMS_TO_TICKS(10))) {
-    ESP_LOGV(TAG, "UART char: 0x%x",c);
-    start[1] = (c == START_BYTE_2);
-    if(start[1]&start[0]) {
-      read_len = uart_read_bytes(dev->uart_dev.port, &start, 2, pdMS_TO_TICKS(10));
-      if(read_len < 2) return ESP_FAIL;
-      frame_len = (start[0]<<8)|start[1];
-      if(frame_len == FRAME_LENGTH)
+  UART_DEV_CHECK(&dev->uart_dev, uart_get_buffered_data_len(dev->uart_dev.port, &available));
+  if(available<(PMS1003_DATA_FRAME_LENGTH+4)){
+  // if(available<1){
+    ESP_LOGE(TAG, "Not enough data on RX buffer. Available: %d", available);
+    //   ESP_LOGI(TAG, "Cleaning RX buffer due to wrong length");
+      // uart_flush(dev->uart_dev.port);
+    // }
+    return ESP_ERR_INVALID_SIZE;
+  }
+  ESP_LOGD(TAG, "Rx buffer bytes available: %d", available);
+  while(1) {
+    read_len = uart_read_bytes(dev->uart_dev.port, &c, 1, pdMS_TO_TICKS(20));
+    if(read_len!=1){  //TODO: add timeout to break loop!
+      ESP_LOGE(TAG, "Couldn't get byte from UART!");
+      ESP_LOGD(TAG, "Received %u bytes",in_idx);
+      err=uart_get_buffered_data_len(dev->uart_dev.port, &available);
+      if(err!=ESP_OK){
+        ESP_LOGE(TAG, "Couldn't get available bytes!");
+        ESP_LOGI(TAG, "Assuming UART is broken and restarting...");
+        ESP_ERROR_CHECK_WITHOUT_ABORT(pms1003_init(dev));
+        return ESP_FAIL;
+      }
+      ESP_LOGD(TAG, "Rx buffer bytes available: %d", available);
+      if(available==0) return ESP_FAIL;
+    } else {
+      ESP_LOGV(TAG, "UART char: 0x%x",c);
+      ESP_LOGV(TAG, "in_idx: %u",in_idx);
+      in_buff[in_idx]=c;
+      switch(decode_state){
+        case PMS_DECODE_READ_STATE_START1:
+        if (c==START_BYTE_1){
+          decode_state=PMS_DECODE_READ_STATE_START2;
+          in_idx=1;
+          ESP_LOGD(TAG, "Found start high byte");
+        }else{
+          in_idx=0;
+        }
         break;
-      else {
-        start[0] = 0;
-        start[1] = 0;
-        uart_read_bytes(dev->uart_dev.port, &c, 1, pdMS_TO_TICKS(10));
+        case PMS_DECODE_READ_STATE_START2:
+        if (c==START_BYTE_2){
+          decode_state=PMS_DECODE_READ_STATE_FRAME_LEN1;
+          in_idx=2;
+          ESP_LOGD(TAG, "Found start low byte");
+        }else{
+          decode_state=PMS_DECODE_READ_STATE_START1;
+          in_idx=0;
+        }
+        break;
+        case PMS_DECODE_READ_STATE_FRAME_LEN1:
+        in_idx=3;
+        frame_len=(c<<8)&0xff00;
+        decode_state=PMS_DECODE_READ_STATE_FRAME_LEN2;
+        break;
+        case PMS_DECODE_READ_STATE_FRAME_LEN2:
+        in_idx=3;
+        frame_len|=c;
+        if(frame_len == PMS1003_DATA_FRAME_LENGTH){
+          decode_state=PMS_DECODE_READ_STATE_DATA;
+          data_idx=0;
+          ESP_LOGD(TAG, "Found correct length for data message.");
+        }
+        else{
+          if((in_buff[in_idx-1]==START_BYTE_1) && (in_buff[in_idx]==START_BYTE_2)) {
+            decode_state=PMS_DECODE_READ_STATE_FRAME_LEN1;
+          }else{
+            decode_state=PMS_DECODE_READ_STATE_START1;
+          }
+          in_idx=0;
+        }
+        break;
+        case PMS_DECODE_READ_STATE_DATA:
+        res8[data_idx]=c;
+        data_idx++;
+        if(data_idx==PMS1003_DATA_FRAME_LENGTH){
+          if(check_code(res8, PMS1003_DATA_FRAME_LENGTH) != ESP_OK){
+            data_idx=0;
+            decode_state=PMS_DECODE_READ_STATE_START1;
+            in_idx=0;
+          // for(i=in_idx-PMS1003_DATA_FRAME_LENGTH+2;i<=in_idx;i++) {
+          //   if(in_idx[i]==START_BYTE_1){
+            //   if(in_idx[i]==START_BYTE_1){
+            //     if(i+4 == PMS1003_DATA_FRAME_LENGTH){
+            //       decode_state=PMS_DECODE_READ_STATE_START2;
+            //     }
+            //     if(res8[i+1]==START_BYTE_2){
+            //       if(i+4 == PMS1003_DATA_FRAME_LENGTH){
+            //         decode_state=PMS_DECODE_READ_STATE_FRAME_LEN1;
+            //       }
+            //       if(res8[i+2]==0x1){
+            //         if(i+4 == PMS1003_DATA_FRAME_LENGTH){
+            //           decode_state=PMS_DECODE_READ_STATE_FRAME_LEN2;
+            //         }
+            //         if(res8[i+3]==0xc){
+            //           if(i+4 == PMS1003_DATA_FRAME_LENGTH) data_idx=0;
+            //           else{
+            //             memcpy(res8,res8+i+4,PMS1003_DATA_FRAME_LENGTH-i-1-4);
+            //             data_idx=PMS1003_DATA_FRAME_LENGTH-i-1-4;
+            //           }
+            //           uint8_t j;
+            //           for(j=0;j<PMS1003_DATA_FRAME_LENGTH;j++){
+            //             ESP_LOGD(TAG, "checkFail res8[%u]: %u",j,res8[j]);
+            //           }
+            //           break;
+            //         }
+            //       }
+            //     }
+            //   }
+            // }
+          }else{
+              res->pm1_0_con_unit = (res8[0]<<8)|res8[1];
+              res->pm2_5_con_unit = (res8[2]<<8)|res8[3];
+              res->pm10_con_unit = (res8[4]<<8)|res8[5];
+              res->pm1_0_con_unit_atmosphe = (res8[6]<<8)|res8[7];
+              res->pm2_5_con_unit_atmosphe = (res8[8]<<8)|res8[9];
+              res->con_unit_atmosphe = (res8[10]<<8)|res8[11];
+              res->particle_nr_0_3_um = (res8[12]<<8)|res8[13];
+              res->particle_nr_0_5_um = (res8[14]<<8)|res8[15];
+              res->particle_nr_1_0_um = (res8[16]<<8)|res8[17];
+              res->particle_nr_2_5_um = (res8[18]<<8)|res8[19];
+              res->particle_nr_5_0_um = (res8[20]<<8)|res8[21];
+              res->particle_nr_10_um = (res8[22]<<8)|res8[23];
+              res->reserved = (res8[24]<<8)|res8[25];
+              res->check = (res8[26]<<8)|res8[27];
+              ESP_LOGV(TAG, "RES: %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u",
+              res->pm1_0_con_unit,
+              res->pm2_5_con_unit,
+              res->pm10_con_unit,
+              res->pm1_0_con_unit_atmosphe,
+              res->pm2_5_con_unit_atmosphe,
+              res->con_unit_atmosphe,
+              res->particle_nr_0_3_um,
+              res->particle_nr_0_5_um,
+              res->particle_nr_1_0_um,
+              res->particle_nr_2_5_um,
+              res->particle_nr_5_0_um,
+              res->particle_nr_10_um,
+              res->reserved,
+              res->check);
+              return ESP_OK;
+            }
+          }
+        break;
+        default:
+          ESP_LOGE(TAG, "Invalid parsing state! %u",decode_state);
+          return ESP_ERR_INVALID_STATE;
+        break;
       }
     }
-    start[0] = (c == START_BYTE_1);
   }
-  if(frame_len != FRAME_LENGTH) {
-    ESP_LOGE(TAG, "Calculated frame length %u, expected frame length: %u", frame_len, FRAME_LENGTH);
-    ESP_LOGE(TAG, "Couldn't find a message.");
-    return ESP_FAIL;
-  }
-  read_len = uart_read_bytes(dev->uart_dev.port, res8, FRAME_LENGTH, pdMS_TO_TICKS(1420));
-  if(read_len < FRAME_LENGTH) {
-    ESP_LOGE(TAG,"Couldn't get all bytes! Got %u/%u expected.",read_len,FRAME_LENGTH);
-    return ESP_FAIL;
-  }
-  res->pm1_0_con_unit = (res8[0]<<8)|res8[1];
-  res->pm2_5_con_unit = (res8[2]<<8)|res8[3];
-  res->pm10_con_unit = (res8[4]<<8)|res8[5];
-  res->pm1_0_con_unit_atmosphe = (res8[6]<<8)|res8[7];
-  res->pm2_5_con_unit_atmosphe = (res8[8]<<8)|res8[9];
-  res->con_unit_atmosphe = (res8[10]<<8)|res8[11];
-  res->particle_nr_0_3_um = (res8[12]<<8)|res8[13];
-  res->particle_nr_0_5_um = (res8[14]<<8)|res8[15];
-  res->particle_nr_1_0_um = (res8[16]<<8)|res8[17];
-  res->particle_nr_2_5_um = (res8[18]<<8)|res8[19];
-  res->particle_nr_5_0_um = (res8[20]<<8)|res8[21];
-  res->particle_nr_10_um = (res8[22]<<8)|res8[23];
-  res->reserved = (res8[24]<<8)|res8[25];
-  res->check = (res8[26]<<8)|res8[27];
-  ESP_LOGD(TAG, "RES: %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u",
-          res->pm1_0_con_unit,
-          res->pm2_5_con_unit,
-          res->pm10_con_unit,
-          res->pm1_0_con_unit_atmosphe,
-          res->pm2_5_con_unit_atmosphe,
-          res->con_unit_atmosphe,
-          res->particle_nr_0_3_um,
-          res->particle_nr_0_5_um,
-          res->particle_nr_1_0_um,
-          res->particle_nr_2_5_um,
-          res->particle_nr_5_0_um,
-          res->particle_nr_10_um,
-          res->reserved,
-          res->check);
-  /*if(read_len == PMS1003_RAW_DATA_SIZE) {
-    ESP_LOGD(TAG, "Got response %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\
-             %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-             res8[0], res8[1], res8[2], res8[3], res8[4], res8[5], res8[6], res8[7], res8[8], res8[9],
-             res8[10], res8[12], res8[13], res8[14], res8[15], res8[16], res8[17], res8[18], res8[19],
-             res8[20], res8[21], res8[22], res8[23], res8[24], res8[25], res8[26], res8[27]);
-    uint16_t *res16 = (uint16_t *)res;
-    ESP_LOGD(TAG, "Got response %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x",
-             res16[0], res16[1], res16[2], res16[3], res16[4], res16[5], res16[6], res16[7], res16[8], res16[9], res16[10], res16[12], res16[13], res16[14]);
-  }*/
-  // ESP_LOGW(TAG, "Didn't get enough data: %d/%u",read_len,PMS1003_RAW_DATA_SIZE);
-  return check_code(res8, FRAME_LENGTH);
-  // return ESP_FAIL;
+  return ESP_OK;
 }
 
 static esp_err_t read_res(pms1003_t *dev, pms1003_raw_data_t *res) {
@@ -282,18 +353,18 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->conf.delay_after_awake_ms = (uint32_t) CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS;
     dev->conf.rst_pin = rst_pin;
     dev->conf.set_pin = set_pin;
-    dev->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
+    dev->status.sleep_mode = PMS1003_SLEEP_MODE_MAX;
     // dev->sen.status.sleeping = false;
-    dev->status.mode = PMS1003_DATA_MODE_PASSIVE;
+    dev->status.mode = PMS1003_DATA_MODE_ACTIVE;
     dev->uart_dev.port = port;
     dev->uart_dev.tx_io_num = tx_gpio;
     dev->uart_dev.rx_io_num = rx_gpio;
-    dev->uart_dev.rts_io_num = rts_io_num;
-    dev->uart_dev.cts_io_num = cts_io_num;
+    // dev->uart_dev.rts_io_num = rts_io_num;
+    // dev->uart_dev.cts_io_num = cts_io_num;
     dev->uart_dev.tx_buffer_size = tx_buffer_size;
     dev->uart_dev.rx_buffer_size = rx_buffer_size;
     dev->uart_dev.queue_size = queue_size;
-    // dev->uart_dev.queue = queue;
+    dev->uart_dev.queue = NULL;
     dev->uart_dev.intr_alloc_flags = intr_alloc_flags;
     dev->uart_dev.cfg.baud_rate = baud_rate;
     dev->uart_dev.cfg.data_bits = data_bits;
@@ -308,15 +379,16 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     // dev->sen.conf.delay_after_awake_us = (uint32_t) (CONFIG_PMS1003_AFTER_AWAKE_DELAY_MS*1000);
     dev->sen.conf.delay_after_awake_us = 35000000;
     dev->sen.conf.time_to_adjust_us = 0;
-    dev->sen.conf.delay_start_get_us = 150000;
+    dev->sen.conf.delay_start_get_us = 4420420;
     dev->sen.info.lib_id = SEN_PMS1003_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
     dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
-    dev->sen.conf.min_period_us = 0;
+    dev->sen.conf.min_period_us = 1000000;
     dev->sen.info.out_nr = 12;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.period_ms=nearest_prime(CONFIG_PMS1003_DEFAULT_PERIOD_MS);
+    dev->sen.conf.period_ms=15000;
     dev->sen.dev=dev;
     dev->sen.reset=pms1003_iot_sen_reset;
     dev->sen.reinit=pms1003_iot_sen_reinit;
@@ -427,78 +499,72 @@ esp_err_t pms1003_free_desc(pms1003_t *dev) {
 esp_err_t pms1003_init(pms1003_t *dev) {
   CHECK_ARG(dev);
   gpio_config_t io_conf;
+  size_t available;
+  ESP_LOGI(TAG, "PMS1003 initializing...");
   io_conf.intr_type = GPIO_INTR_DISABLE;
   io_conf.pin_bit_mask = ((1ULL<<dev->conf.rst_pin) | (1ULL<<dev->conf.set_pin));
   io_conf.mode = GPIO_MODE_OUTPUT;
+  io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
   io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-  io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
+  // io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+  // io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
   CHECK(gpio_config(&io_conf));
-  CHECK(uart_driver_install(dev->uart_dev.port, dev->uart_dev.rx_buffer_size, dev->uart_dev.tx_buffer_size, dev->uart_dev.queue_size, &dev->uart_dev.queue, dev->uart_dev.intr_alloc_flags));
+  CHECK(gpio_set_level(dev->conf.rst_pin, 0));
+  CHECK(gpio_set_level(dev->conf.set_pin, 0));
+  uart_driver_delete(dev->uart_dev.port);
   CHECK(uart_param_config(dev->uart_dev.port, &dev->uart_dev.cfg));
   CHECK(uart_set_pin(dev->uart_dev.port, dev->uart_dev.tx_io_num, dev->uart_dev.rx_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+  CHECK(uart_driver_install(dev->uart_dev.port,dev->uart_dev.rx_buffer_size, dev->uart_dev.tx_buffer_size, 0, NULL, dev->uart_dev.intr_alloc_flags));
+  CHECK(pms1003_reset(dev));
+  CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_AWAKE));
+  // CHECK(uart_param_config(dev->uart_dev.port, &dev->uart_dev.cfg));
+  // CHECK(uart_set_pin(dev->uart_dev.port, dev->uart_dev.tx_io_num, dev->uart_dev.rx_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+  // CHECK(uart_driver_install(dev->uart_dev.port, 256, 256, 0, NULL, dev->uart_dev.intr_alloc_flags));
+  // CHECK(uart_driver_install(dev->uart_dev.port, dev->uart_dev.rx_buffer_size, dev->uart_dev.tx_buffer_size, dev->uart_dev.queue_size, &dev->uart_dev.queue, dev->uart_dev.intr_alloc_flags));
+  // vTaskDelay(pdMS_TO_TICKS(600000));
 
   /* Set pattern interrupt, used to detect the end of a line */
-  // uart_enable_pattern_det_baud_intr(esp_gps->uart_port, 0x42, 1, 9, 0, 0);
+  // uart_enable_pattern_det_baud_intr(dev->uart_dev.port, START_BYTE_1, 1, 9, 0, 0);
   /* Set pattern queue size */
   // uart_pattern_queue_reset(dev->uart_dev.port, dev->uart_dev.event_queue_size);
-  uart_flush(dev->uart_dev.port);
-  /* Create Event loop */
-  // esp_event_loop_args_t loop_args = {
-  //     .queue_size = NMEA_EVENT_LOOP_QUEUE_SIZE,
-  //     .task_name = NULL
-  // };
-  // if (esp_event_loop_create(&loop_args, &esp_gps->event_loop_hdl) != ESP_OK) {
-  //     ESP_LOGE(GPS_TAG, "create event loop faild");
-  //     goto err_eloop;
-  // }
-  //
+  // CHECK(uart_disable_rx_intr(dev->uart_dev.port));
+  // CHECK(uart_disable_tx_intr(dev->uart_dev.port));
+  uint64_t init_start=esp_timer_get_time();
+  while(1){
+    UART_DEV_CHECK(&dev->uart_dev, uart_get_buffered_data_len(dev->uart_dev.port, &available));
+    if((available>=PMS1003_DATA_FRAME_LENGTH+4) || ((esp_timer_get_time()-init_start)>30000000)) break;
+  }
+  // vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000));
+  ESP_LOGD(TAG, "Available Rx buffer bytes: %d", available);
+  ESP_LOGD(TAG, "time untill get data: %llu", (esp_timer_get_time()-init_start));
   // CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_SLEEP));
-  CHECK(pms1003_reset(dev));
-  vTaskDelay(1000);
-  uint8_t cmd[7];
-  uart_flush(dev->uart_dev.port);
-  CHECK(pms1003_set_data_mode(dev, PMS1003_DATA_MODE_PASSIVE));
-  // vTaskDelay(pdMS_TO_TICKS(dev->conf.delay_after_awake_ms));
-  // CHECK(pms1003_start_measurement(dev));
-
-  CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_AWAKE));
-
-  // if(dev->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) {
-  //   CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_AWAKE));
-  //   dev->status.sleep_mode = PMS1003_SLEEP_MODE_AWAKE;
-  // }
-  // CHECK(exec_cmd(dev,cmd,0));
-  // dev->sen.status.sleeping = (dev->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
-  uart_flush(dev->uart_dev.port);
-  // CHECK(get_set_data_mode_cmd(cmd, PMS1003_DATA_MODE_PASSIVE));
-  // CHECK(exec_cmd(dev,cmd,0));
-  // CHECK(get_set_data_mode_cmd(cmd, PMS1003_DATA_MODE_PASSIVE));
-  // CHECK(exec_cmd(dev,cmd,0));
-  // vTaskDelay(pdMS_TO_TICKS(dev->conf.delay_after_awake_ms));
-  // pms1003_raw_data_t raw;
-  // CHECK(pms1003_get_raw_data(dev, &raw));
-  dev->sen.status.initialized = true;
-  return ESP_OK;
+  if(available>=PMS1003_DATA_FRAME_LENGTH+4){
+    dev->sen.status.initialized = 1;
+    ESP_LOGI(TAG, "Sensor initialized!");
+    return ESP_OK;
+  }
+  return ESP_FAIL;
 }
 
 esp_err_t pms1003_reset(pms1003_t *dev) {
-    dev->meas_start_time = 0;
-    dev->meas_started = false;
-
-    gpio_set_level(dev->conf.rst_pin, 0);
-    vTaskDelay(100);
-    gpio_set_level(dev->conf.rst_pin, 1);
-    vTaskDelay(100);
-    CHECK(pms1003_set_data_mode(dev, PMS1003_DATA_MODE_PASSIVE));
-
-    uart_flush(dev->uart_dev.port);
-
-    return ESP_OK;
+  CHECK_ARG(dev);
+  // dev->meas_start_time = 0;
+  // dev->meas_started = false;
+  ESP_LOGI(TAG, "Sensor is restarting...");
+#ifdef CONFIG_PMS1003_USE_HW_CTRL
+  CHECK(gpio_set_level(dev->conf.rst_pin, 0));
+  vTaskDelay(420);
+  CHECK(gpio_set_level(dev->conf.rst_pin, 1));
+#else
+  ESP_LOGE(TAG, "Can't reset device without hardware control enabled on menuconfig.");
+#endif
+  uart_flush(dev->uart_dev.port);
+  return ESP_OK;
 }
 
 esp_err_t pms1003_measure(pms1003_t *dev, pms1003_raw_data_t *raw) {
   // esp_err_t ret;
-  ESP_LOGD(TAG, "pms1003_iot_sen_measurement");
+  ESP_LOGD(TAG, "pms1003 sen measurement");
   // CHECK_ARG(dev && (pm1_0_con_unit || pm2_5_con_unit || pm10_con_unit || pm1_0_con_unit_atmosphe || pm2_5_con_unit_atmosphe || con_unit_atmosphe || particle_nr_0_3_um || particle_nr_0_5_um || particle_nr_1_0_um || particle_nr_2_5_um || particle_nr_5_0_um || particle_nr_10_um));
   CHECK_ARG(dev && raw);
   // CHECK_ARG(dev);
@@ -506,6 +572,8 @@ esp_err_t pms1003_measure(pms1003_t *dev, pms1003_raw_data_t *raw) {
   // uint8_t cmd[7];
   // CHECK(get_meas_cmd(cmd));
   // CHECK(exec_cmd(dev,cmd, 0));
+  vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000));
+  while(is_measuring(dev));
   CHECK(pms1003_get_raw_data(dev,raw));
   // if(dev->conf.delay_after_awake_ms)
   //   pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_SLEEP);
@@ -516,6 +584,7 @@ esp_err_t pms1003_start_measurement(pms1003_t *dev) {
   CHECK_ARG(dev);
   esp_err_t ret;
   uint8_t cmd[7];
+  ESP_LOGD(TAG, "Start measurement");
 
   if (is_measuring(dev)) {
     ESP_LOGE(TAG, "Measurement is still running");
@@ -524,37 +593,25 @@ esp_err_t pms1003_start_measurement(pms1003_t *dev) {
 
   if(dev->status.sleep_mode == PMS1003_SLEEP_MODE_SLEEP) {
     CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_AWAKE));
-    vTaskDelay(pdMS_TO_TICKS(dev->conf.delay_after_awake_ms));
+    vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_after_awake_us/1000));
   }
-
-  CHECK(get_meas_cmd(cmd));
-  CHECK(exec_cmd(dev,cmd, 0));
+  if(dev->status.mode==PMS1003_DATA_MODE_PASSIVE){
+    CHECK(get_meas_cmd(cmd));
+    CHECK(exec_cmd(dev,cmd, 0));
+  } else if(dev->status.mode == PMS1003_DATA_MODE_ACTIVE){
+    ESP_LOGD(TAG, "Cleaning RX buffer...");
+    uart_flush(dev->uart_dev.port); //Clean all messages scince sensor awake
+  }
   dev->meas_start_time = esp_timer_get_time();
-  dev->sen.meas_started_us = dev->meas_start_time;
   dev->meas_started = true;
-  // dev->sen.esp_timestamp=esp_timer_get_time();  //Scince we are going to wait a bit before reading the serial bus, it is more accurate to add timestamp here...
-  // uint8_t cmd[7];
-  // uint16_t check = 0;
-  // cmd[0] = START_BYTE_1;
-  // cmd[1] = START_BYTE_2;
-  // cmd[2] = CMD_READ_PASSIVE_MODE;
-  // cmd[3] = 0;
-  // cmd[4] = 0;
-  // check = cmd[0]+cmd[1]+cmd[2]+cmd[3]+cmd[4];
-  // cmd[5] = check>>8;
-  // cmd[6] = (check<<8)>>8;
-
-  // UART_DEV_TAKE_MUTEX(&dev->uart_dev);
-  // const int txBytes = uart_write_bytes(dev->uart_dev.port, cmd, 7);
-  // UART_DEV_GIVE_MUTEX(&dev->uart_dev);
-  // ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
-  // if(txBytes<7) return ESP_FAIL;
 
   return ESP_OK;
 }
 
 esp_err_t pms1003_set_data_mode(pms1003_t *dev, pms1003_mode_type_t data_mode) {
   uint8_t cmd[7];
+  CHECK_ARG(dev);
+  ESP_LOGD(TAG, "Setting data mode: %u",data_mode);
   CHECK(get_set_data_mode_cmd(cmd, data_mode));
   CHECK(exec_cmd(dev,cmd,0));
   dev->status.mode = data_mode;
@@ -562,39 +619,47 @@ esp_err_t pms1003_set_data_mode(pms1003_t *dev, pms1003_mode_type_t data_mode) {
 }
 
 esp_err_t pms1003_set_sleep_mode(pms1003_t *dev, pms1003_sleep_type_t sleep_mode) {
-  uint8_t cmd[7];
+  CHECK_ARG(dev);
+  ESP_LOGD(TAG, "pms1003_set_sleep_mode");
+  ESP_LOGD(TAG, "Initial sleep mode: %u", dev->status.sleep_mode);
+  if(dev->status.sleep_mode == sleep_mode) return ESP_OK;
+  if((sleep_mode!=PMS1003_SLEEP_MODE_SLEEP) && (sleep_mode!=PMS1003_SLEEP_MODE_AWAKE)){
+    ESP_LOGE(TAG, "Ivalid sleep mode!");
+    return ESP_ERR_INVALID_STATE;
+  }
+#ifdef CONFIG_PMS1003_USE_HW_CTRL
+  if(sleep_mode==PMS1003_SLEEP_MODE_SLEEP) {
+    ESP_LOGD(TAG, "Sensor going to sleep");
+    CHECK(gpio_set_level(dev->conf.set_pin, 0));
+  } else {
+    ESP_LOGD(TAG, "Sensor awaking");
+    CHECK(gpio_set_level(dev->conf.set_pin, 1));
+  }
+#else
   CHECK(get_set_sleep_mode_cmd(cmd, sleep_mode));
   CHECK(exec_cmd(dev,cmd,0));
-  if(sleep_mode==PMS1003_SLEEP_MODE_SLEEP) {
-    vTaskDelay(pdMS_TO_TICKS(100));
-    gpio_set_level(dev->conf.set_pin, 0);
-  } else {
-    gpio_set_level(dev->conf.set_pin, 1);
-  }
+#endif
   dev->status.sleep_mode = sleep_mode;
-  // dev->sen.status.sleeping = (sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
+  ESP_LOGD(TAG, "Current sleep mode: %u", dev->status.sleep_mode);
   return ESP_OK;
 }
 
 esp_err_t pms1003_toggle_sleep_mode(pms1003_t *dev) {
-  uint8_t cmd[7];
+  CHECK_ARG(dev);
+  ESP_LOGD(TAG, "pms1003_toggle_sleep_mode");
   if(dev->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) {
-    CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_AWAKE));
-    dev->status.sleep_mode = PMS1003_SLEEP_MODE_AWAKE;
+    CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_AWAKE));
   }
   else {
-    CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_SLEEP));
-    dev->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
+    CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_SLEEP));
   }
 
-  CHECK(exec_cmd(dev,cmd,0));
-  // dev->sen.status.sleeping = (dev->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
   return ESP_OK;
 }
 
 size_t pms1003_get_measurement_duration(pms1003_t *dev) {
-    if (!dev) return 0;
-
+    CHECK_ARG(dev);
+    ESP_LOGD(TAG, "pms1003_toggle_sleep_mode");
     size_t res = pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000);
     return res == 0 ? 1 : res;
 }
@@ -604,10 +669,10 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
     // int64_t timestamp;
 
     ESP_LOGD(TAG, "pms1003_get_raw_data");
-    if (is_measuring(dev)) {
-      ESP_LOGE(TAG, "Measurement is still running");
-      return ESP_ERR_INVALID_STATE;
-    }
+    // if (is_measuring(dev)) {
+    //   ESP_LOGE(TAG, "Measurement is still running");
+    //   return ESP_ERR_INVALID_STATE;
+    // }
 
     CHECK(read_res(dev, raw));
     // timestamp=esp_timer_get_time();
@@ -624,7 +689,7 @@ esp_err_t pms1003_get_raw_data(pms1003_t *dev, pms1003_raw_data_t *raw) {
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].m_raw = raw->particle_nr_2_5_um;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].m_raw = raw->particle_nr_5_0_um;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].m_raw = raw->particle_nr_10_um;
-    dev->sen.esp_timestamp=dev->sen.meas_started_us+dev->sen.conf.delay_start_get_us;
+    dev->sen.esp_timestamp=esp_timer_get_time();
     // print_raw_values(dev);
     return ESP_OK;
 }
@@ -646,7 +711,9 @@ esp_err_t pms1003_compute_values(pms1003_t *dev, pms1003_raw_data_t *raw) {
 }
 
 esp_err_t pms1003_get_results(pms1003_t *dev) {
+  CHECK_ARG(dev);
   pms1003_raw_data_t raw;
+  ESP_LOGD(TAG, "pms1003_get_results");
   CHECK(pms1003_get_raw_data(dev, &raw));
   return pms1003_compute_values(dev, &raw);
 }
@@ -662,54 +729,20 @@ esp_err_t pms1003_iot_sen_get_data(void *dev) {
   // return pms1003_compute_values(dev, &raw);
   return pms1003_get_results((pms1003_t *)dev);
   // return pms1003_measure((pms1003_t *)dev, &raw);
-  // return tsl2591_get_lux((tsl2591_t*) dev,&lux);
   // return ESP_OK;
+  // return pms1003_measure((pms1003_t *)dev, &raw);
 }
 
 esp_err_t pms1003_iot_sen_toggle_sleep_mode(void *dev) {
-  uint8_t cmd[7];
-  pms1003_t *dev_ = (pms1003_t *)dev;
-  if(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) {
-    CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_AWAKE));
-    dev_->status.sleep_mode = PMS1003_SLEEP_MODE_AWAKE;
-  }
-  else {
-    CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_SLEEP));
-    dev_->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
-  }
-
-  CHECK(exec_cmd(dev,cmd,0));
-  // dev_->sen.status.sleeping = (dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP);
-  return ESP_OK;
+  return pms1003_toggle_sleep_mode((pms1003_t *)dev);
 }
 
 esp_err_t pms1003_iot_sen_sleep_mode_awake(void *dev) {
-  // uint8_t cmd[7];
-  pms1003_t *dev_ = (pms1003_t *)dev;
-  // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP) || dev_->sen.status.sleeping) {
-  // if((dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) {
-    // CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_AWAKE));
-    // CHECK(exec_cmd(dev_,cmd,0));
-    // dev_->status.sleep_mode = PMS1003_SLEEP_MODE_AWAKE;
-
-    // dev_->sen.status.sleeping = false;
-  // }
-  CHECK(pms1003_set_sleep_mode(dev_, PMS1003_SLEEP_MODE_AWAKE));
-  return ESP_OK;
+  return pms1003_set_sleep_mode((pms1003_t *)dev, PMS1003_SLEEP_MODE_AWAKE);
 }
 
 esp_err_t pms1003_iot_sen_sleep_mode_sleep(void *dev) {
-  // uint8_t cmd[7];
-  pms1003_t *dev_ = (pms1003_t *)dev;
-  // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP)) || (!dev_->sen.status.sleeping)) {
-  // if((!(dev_->status.sleep_mode==PMS1003_SLEEP_MODE_SLEEP))) {
-    // CHECK(get_set_sleep_mode_cmd(cmd, PMS1003_SLEEP_MODE_SLEEP));
-    // CHECK(exec_cmd(dev_,cmd,0));
-    // dev_->status.sleep_mode = PMS1003_SLEEP_MODE_SLEEP;
-    // dev_->sen.status.sleeping = false;
-  // }
-  CHECK(pms1003_set_sleep_mode(dev_, PMS1003_SLEEP_MODE_SLEEP));
-  return ESP_OK;
+  return pms1003_set_sleep_mode((pms1003_t *)dev, PMS1003_SLEEP_MODE_SLEEP);
 }
 
 esp_err_t pms1003_iot_sen_reset(void *dev) {

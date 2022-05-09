@@ -1,16 +1,4 @@
 menu "PMS1003"
-
-config PMS1003_USE_DATA_STORAGE
-    bool "Sensor data storage"
-    default false
-    help
-
-config PMS1003_USE_CONF_STORAGE
-    bool "Sensor configurations storage"
-    default false
-    help
-    Let sensor data be stored and updated.
-
 config PMS1003_AFTER_AWAKE_DELAY_MS
     int "Delay after awake"
     default 30000
@@ -25,4 +13,10 @@ config PMS1003_DEFAULT_PERIOD_MS
     help
         Default data acquisition period in milliseconds.
 
+config PMS1003_USE_HW_CTRL
+    bool "Use hardware controll signals"
+    default false
+    help
+        If set, sensor will reset, sleep, awake using the sensor pins SET and RST.
+        If not set, sleep and reset operations are done with serial commands.
 endmenu
