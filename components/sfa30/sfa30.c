@@ -317,7 +317,7 @@ esp_err_t sfa30_get_data(sfa30_t *dev) {
     dev->measurement_running=true;
     ESP_LOGD(TAG, "Retrieving data!");
     dev->meas_start_time = esp_timer_get_time();
-    dev->sen.esp_timestamp = esp_timer_get_time();
+    // dev->sen.esp_timestamp = esp_timer_get_time();
     dev->meas_started = true;
 
     return ESP_OK;
@@ -401,7 +401,6 @@ esp_err_t sfa30_iot_sen_get_data(void *dev) {
   float hcho, humidity, temperature;
   sfa30_t *dev_ = (sfa30_t *)dev;
   sfa30_raw_data_t raw;
-  struct timeval tv;
 
   CHECK(read_res(dev, raw, SFA30_RAW_DATA_SIZE));
   // gettimeofday(&tv, NULL);
@@ -409,6 +408,11 @@ esp_err_t sfa30_iot_sen_get_data(void *dev) {
   dev_->sen.outs[SFA30_OUT_HCHO_ID].m_raw=((raw[0] << 8) | raw[1]);
   dev_->sen.outs[SFA30_OUT_RH_ID].m_raw=((raw[3] << 8) | raw[4]);
   dev_->sen.outs[SFA30_OUT_TEMP_ID].m_raw=((raw[6] << 8) | raw[7]);
+  if((dev_->sen.outs[SFA30_OUT_HCHO_ID].m_raw == 0)&&(dev_->sen.outs[SFA30_OUT_RH_ID].m_raw == 0)&&(dev_->sen.outs[SFA30_OUT_TEMP_ID].m_raw == 0)){
+    ESP_LOGE(TAG, "All values are zero! Considering it an error...");
+    return ESP_FAIL;
+  }
+  dev->sen.esp_timestamp = esp_timer_get_time();
   ESP_LOGD(TAG, "raw[0]: %u,raw[1]: %u,raw[2]: %u,raw[3]: %u,raw[4]: %u,raw[5]: %u,raw[6]: %u,raw[7]: %u,raw[8]: %u",raw[0],raw[1],raw[2],raw[3],raw[4],raw[5],raw[6],raw[7],raw[8]);
   ESP_LOGD(TAG, "HCHO raw: %u",dev_->sen.outs[SFA30_OUT_HCHO_ID].m_raw);
   ESP_LOGD(TAG, "RH raw: %u",dev_->sen.outs[SFA30_OUT_RH_ID].m_raw);
