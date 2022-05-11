@@ -185,7 +185,6 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, \
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,outs_nr);
     strcpy(dev->sen.info.name, sen_name);
-    ESP_LOGE(TAG, "INIT - dev->sen.sen_name: %s",dev->sen.info.name);
     dev->sen.info.lib_id = SEN_ANALOG_SEN_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
@@ -235,20 +234,15 @@ esp_err_t analog_sen_free_desc(analog_sen_t *dev) {
 }
 
 esp_err_t analog_sen_config_output(analog_sen_t *dev, uint8_t out_idx, adc_unit_t unit, adc_channel_t analog_channel, void *calc_processed) {
-  esp_adc_cal_value_t val_type;
   dev->sen.outs[out_idx].out_id=out_idx;
   dev->sen.outs[out_idx].out_val_type = SEN_OUT_VAL_TYPE_UINT16;
   dev->sen.outs[out_idx].gpio=analog_channel;
   dev->sen.outs[out_idx].bit_nr=16;
   dev->sen.outs[out_idx].m_raw=0;
-  val_type = esp_adc_cal_characterize(unit, ANALOG_SEN_ATT_0DB, ADC_WIDTH_BIT_12, ANALOG_SEN_DEFAULT_VREF, &dev->outs[out_idx].adc_chars[ANALOG_SEN_ATT_0DB]);
-  print_char_val_type(val_type);  //TODO: DEBUG, remove me!
-  val_type = esp_adc_cal_characterize(unit, ANALOG_SEN_ATT_2_5DB, ADC_WIDTH_BIT_12, ANALOG_SEN_DEFAULT_VREF, &dev->outs[out_idx].adc_chars[ANALOG_SEN_ATT_2_5DB]);
-  print_char_val_type(val_type);  //TODO: DEBUG, remove me!
-  val_type = esp_adc_cal_characterize(unit, ANALOG_SEN_ATT_6DB, ADC_WIDTH_BIT_12, ANALOG_SEN_DEFAULT_VREF, &dev->outs[out_idx].adc_chars[ANALOG_SEN_ATT_6DB]);
-  print_char_val_type(val_type);  //TODO: DEBUG, remove me!
-  val_type = esp_adc_cal_characterize(unit, ANALOG_SEN_ATT_11DB, ADC_WIDTH_BIT_12, ANALOG_SEN_DEFAULT_VREF, &dev->outs[out_idx].adc_chars[ANALOG_SEN_ATT_11DB]);
-  print_char_val_type(val_type);  //TODO: DEBUG, remove me!
+  esp_adc_cal_characterize(unit, ANALOG_SEN_ATT_0DB, ADC_WIDTH_BIT_12, ANALOG_SEN_DEFAULT_VREF, &dev->outs[out_idx].adc_chars[ANALOG_SEN_ATT_0DB]);
+  esp_adc_cal_characterize(unit, ANALOG_SEN_ATT_2_5DB, ADC_WIDTH_BIT_12, ANALOG_SEN_DEFAULT_VREF, &dev->outs[out_idx].adc_chars[ANALOG_SEN_ATT_2_5DB]);
+  esp_adc_cal_characterize(unit, ANALOG_SEN_ATT_6DB, ADC_WIDTH_BIT_12, ANALOG_SEN_DEFAULT_VREF, &dev->outs[out_idx].adc_chars[ANALOG_SEN_ATT_6DB]);
+  esp_adc_cal_characterize(unit, ANALOG_SEN_ATT_11DB, ADC_WIDTH_BIT_12, ANALOG_SEN_DEFAULT_VREF, &dev->outs[out_idx].adc_chars[ANALOG_SEN_ATT_11DB]);
   dev->outs[out_idx].adc_unit=unit;
   dev->outs[out_idx].analog_channel=analog_channel;
   dev->outs[out_idx].calc_processed=calc_processed;
@@ -282,6 +276,7 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
     uint32_t adc_reading_mean = 0;
     uint16_t adc_val;
     uint8_t zero_count=0;
+    ESP_LOGD(TAG, "analog_sen_get_channel_data");
     // if (dev->adc_unit == ADC_UNIT_1) {
     //     agc_change = sensor_out_agc_change(dev->sen.outs[0], (uint32_t)adc1_get_raw((adc1_channel_t)dev->sen.outs[0].gpio));
     // } else {
@@ -297,20 +292,20 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev) {
     int64_t m_mon = esp_timer_get_time();
     for(j=0; j<dev->outs_nr; j++) dev->outs[j].adc_mean=0;
     for (i = 0; i < dev->sen.conf.samples_filter; i++) {
-      zero_count=0;
+      // zero_count=0;
       for(uint8_t j=0; j<dev->outs_nr; j++) {
         if (dev->outs[j].adc_unit == ADC_UNIT_1) {
           adc_val = adc1_get_raw((adc1_channel_t)dev->sen.outs[j].gpio);
-          if(adc_val > 0)
-          dev->outs[j].adc_mean += adc_val;
-          else{
-            i--;
-            zero_count++;
-            if(zero_count == dev->sen.conf.samples_filter) {
-              dev->outs[j].adc_mean = 0;
-              break;
-            }
-          }
+          // if(adc_val > 0)
+            dev->outs[j].adc_mean += adc_val;
+          // else{
+          //   i--;
+          //   zero_count++;
+          //   if(zero_count == dev->sen.conf.samples_filter) {
+          //     dev->outs[j].adc_mean = 0;
+          //     break;
+          //   }
+          // }
         } else {
           int raw;
           adc2_get_raw((adc2_channel_t)dev->sen.outs[j].gpio, ADC_WIDTH_BIT_12, &raw);
@@ -370,12 +365,15 @@ esp_err_t analog_sen_iot_sen_get_data(void *dev) {
   analog_sen_t *analog_dev = (analog_sen_t *)dev;
   uint16_t voltage;
   uint8_t i;
+  ESP_LOGD(TAG, "analog_sen_iot_sen_get_data");
   analog_sen_get_channel_data(analog_dev);
   for(i=0;i<analog_dev->outs_nr;i++){
+    ESP_LOGD(TAG, "raw[%u]: %u",i, analog_dev->sen.outs[i].m_raw);
     analog_sen_get_voltage(analog_dev, analog_dev->sen.outs[i].m_raw, i, &voltage);
+    ESP_LOGD(TAG, "voltage[%u]: %u mv",i, voltage);
     analog_dev->sen.outs[i].m_raw=voltage;
     if(analog_dev->outs[i].calc_processed != NULL)
-      analog_dev->outs[i].calc_processed(&analog_dev->outs[i]);
+      analog_dev->outs[i].calc_processed(analog_dev);
   }
   if(analog_dev->calc_processed != NULL)
     analog_dev->calc_processed(analog_dev);

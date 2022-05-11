@@ -68,7 +68,7 @@ typedef struct
   uint32_t adc_mean;
   uint16_t voltage;
   uint8_t configured;
-  void (*calc_processed)(void *out);
+  void (*calc_processed)(void *sen);
 } analog_out_t;
 
 /**

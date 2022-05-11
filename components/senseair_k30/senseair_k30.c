@@ -109,40 +109,20 @@ static inline esp_err_t write_ram(k30_t *dev, uint16_t ram_addr, uint8_t cmd, ui
     dev->sen.status.fail_reg=ram_addr;
     ESP_LOGE(TAG, "Error on i2c_dev_write with error: %02x",err);
   }
-  // for(i=0;i<3;i++) {
-  //   ESP_LOGD(TAG,"Sent data response[%u]: 0x%x",i,resp[i]);
-  // }
+
   return ESP_OK;
   return err;
 }
 
 static inline esp_err_t read_resp(k30_t *dev, uint8_t *out_data, uint8_t data_size) {
   esp_err_t err=ESP_OK;
-  // uint8_t out_reg[4];
-  //
-  // out_reg[0]=((K30_COMMAND_READ_RAM<<4) | (data_size));
-  // out_reg[1]=((ram_addr>>8) & 0xFF);
-  // out_reg[2]=(ram_addr & 0xFF);
-  // out_reg[3]=(k30_checksum(out_reg, 3)&0xFF);
-  // ESP_LOGD(TAG,"Reading RAM address: 0x%2x%2x",out_reg[1],out_reg[2]);
-  // ESP_LOGD(TAG,"Reading RAM address: 0x%x",out_reg[1]);
-  // ESP_LOGD(TAG,"Reading RAM address: 0x%x",out_reg[2]);
-  // ESP_LOGD(TAG,"Reading MSG CHECKSUM: 0x%x",out_reg[3]);
-  // ESP_LOGD(TAG, "read_ram data_size: 0x%2x",data_size);
-  // ESP_LOGD(TAG, "read_ram data_size: %u",data_size);
-  // ESP_LOGD(TAG,"Command: 0x%2x",out_reg[0]);
+
   err = i2c_dev_read(&dev->i2c_dev, NULL, 0, out_data, data_size+2);
   if(err != ESP_OK){
     dev->sen.status.status_code=SEN_STATUS_FAIL_READ;
     // dev->sen.status.fail_reg=ram_addr; //TODO: get last address written from status
     ESP_LOGE(TAG, "Error on i2c_dev_read with error: 0x%02x",err);
   }
-
-  uint8_t i=0;
-  for(i=0;i<data_size+2;i++) {
-    ESP_LOGD(TAG,"Received data[%u]: 0x%x",i,out_data[i]);
-  }
-
   if((k30_checksum(out_data, data_size+1)) != out_data[data_size+2-1]){
     ESP_LOGE(TAG, "Checksum check fail! checksum calc: 0x%02x, checksum received: 0x%02x",k30_checksum(out_data, data_size+1),out_data[data_size+2-1]);
     return ESP_ERR_INVALID_CRC;
@@ -163,9 +143,7 @@ esp_err_t k30_init_desc(k30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_n
 #endif
     memset(&dev->sen, 0, sizeof(sensor_t));
     sensor_init(&dev->sen,OUTPUT_NR);
-    // strncpy(dev->sen.info.name, sen_name, strlen(sen_name));
     strcpy(dev->sen.info.name, sen_name);
-    // strncpy(dev->sen.info.name, "K30\0", 8);
     dev->sen.info.lib_id = SEN_K30_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;

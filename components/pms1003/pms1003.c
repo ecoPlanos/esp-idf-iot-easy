@@ -504,9 +504,9 @@ esp_err_t pms1003_init(pms1003_t *dev) {
   io_conf.intr_type = GPIO_INTR_DISABLE;
   io_conf.pin_bit_mask = ((1ULL<<dev->conf.rst_pin) | (1ULL<<dev->conf.set_pin));
   io_conf.mode = GPIO_MODE_OUTPUT;
-  io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+  // io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
   io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-  // io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+  io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
   // io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
   CHECK(gpio_config(&io_conf));
   CHECK(gpio_set_level(dev->conf.rst_pin, 0));
@@ -532,7 +532,8 @@ esp_err_t pms1003_init(pms1003_t *dev) {
   uint64_t init_start=esp_timer_get_time();
   while(1){
     UART_DEV_CHECK(&dev->uart_dev, uart_get_buffered_data_len(dev->uart_dev.port, &available));
-    if((available>=PMS1003_DATA_FRAME_LENGTH+4) || ((esp_timer_get_time()-init_start)>30000000)) break;
+    if((available>=PMS1003_DATA_FRAME_LENGTH+4) || ((esp_timer_get_time()-init_start)>dev->sen.conf.delay_start_get_us)) break;
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
   // vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000));
   ESP_LOGD(TAG, "Available Rx buffer bytes: %d", available);

@@ -23,37 +23,14 @@
 
 static const char *TAG = "MODERN_WIND";
 
-// static void modern_wind_calc_sound(sensor_t *sen) {
-//
-//   // ESP_LOGD(TAG, "sen->outs[0].wind_speed: %f",sen->outs[0].wind_speed);
-//   // ESP_LOGD(TAG, "K0: %f",K0);
-//   // ESP_LOGD(TAG, "K1: %f",K1);
-//   // ESP_LOGD(TAG, "K2: %f",K2);
-// }
-
 #define CHECK(x) do { esp_err_t __; if ((__ = x) != ESP_OK) return __; } while (0)
 #define CHECK_ARG(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 #define SLEEP_MS(x) do { vTaskDelay(pdMS_TO_TICKS(x)); } while (0)
 
-// static inline esp_err_t analog_sen_outs_init(analog_sen_t *dev) {
-//   uint8_t i;
-//   if(dev->outs_nr < 1){
-//     ESP_LOGE(TAG, "call analog_sen_init_desc() with at least 1 output.");
-//     return ESP_ERR_INVALID_ARG;
-//   }
-//   dev->outs = malloc(dev->outs_nr*sizeof(analog_out_t));
-//   for(i=0;i<dev->outs_nr;i++) {
-//     dev->outs[i].adc_chars = 0;
-//     dev->outs[i].adc_mean = 0;
-//     // dev->outs[i].adc_chars = malloc(sizeof(esp_adc_cal_characteristics_t));
-//     dev->outs[i].adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-//     dev->outs[i].configured = 0;
-//   }
-//   return ESP_OK;
-// }
-
 static esp_err_t modern_wind_calc_wind_speed(void *modern_wind_sen){
   analog_sen_t *modern_wind_sen_ = (analog_sen_t *)modern_wind_sen;
+  ESP_LOGD(TAG, "wind voltage: %f mv", modern_wind_sen_->sen.outs[MODERN_WIND_WIND_ID].voltage);
+  ESP_LOGD(TAG, "temperature voltage: %f mv", modern_wind_sen_->sen.outs[MODERN_WIND_TEMP_ID].voltage);
   // modern_wind_sen_->sen.outs[MODERN_WIND_WIND_ID].wind_speed = (((modern_wind_sen_->outs[MODERN_WIND_WIND_ID].voltage – modern_wind_sen_->config.zero_wind_mv) / (3038.517 * (Temp_C ^ 0.115157 ))) / 0.087288 ) ^ 3.009364 //(MPH)
 
   return ESP_OK;
