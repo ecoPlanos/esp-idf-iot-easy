@@ -620,6 +620,7 @@ esp_err_t pms1003_set_data_mode(pms1003_t *dev, pms1003_mode_type_t data_mode) {
 }
 
 esp_err_t pms1003_set_sleep_mode(pms1003_t *dev, pms1003_sleep_type_t sleep_mode) {
+  uint8_t cmd[7];
   CHECK_ARG(dev);
   ESP_LOGD(TAG, "pms1003_set_sleep_mode");
   ESP_LOGD(TAG, "Initial sleep mode: %u", dev->status.sleep_mode);
