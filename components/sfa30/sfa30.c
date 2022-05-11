@@ -402,7 +402,7 @@ esp_err_t sfa30_iot_sen_get_data(void *dev) {
   sfa30_t *dev_ = (sfa30_t *)dev;
   sfa30_raw_data_t raw;
 
-  CHECK(read_res(dev, raw, SFA30_RAW_DATA_SIZE));
+  CHECK(read_res(dev_, raw, SFA30_RAW_DATA_SIZE));
   // gettimeofday(&tv, NULL);
   // dev_->sen.esp_timestamp = esp_timer_get_time();
   dev_->sen.outs[SFA30_OUT_HCHO_ID].m_raw=((raw[0] << 8) | raw[1]);
@@ -412,7 +412,7 @@ esp_err_t sfa30_iot_sen_get_data(void *dev) {
     ESP_LOGE(TAG, "All values are zero! Considering it an error...");
     return ESP_FAIL;
   }
-  dev->sen.esp_timestamp = esp_timer_get_time();
+  dev_->sen.esp_timestamp = esp_timer_get_time();
   ESP_LOGD(TAG, "raw[0]: %u,raw[1]: %u,raw[2]: %u,raw[3]: %u,raw[4]: %u,raw[5]: %u,raw[6]: %u,raw[7]: %u,raw[8]: %u",raw[0],raw[1],raw[2],raw[3],raw[4],raw[5],raw[6],raw[7],raw[8]);
   ESP_LOGD(TAG, "HCHO raw: %u",dev_->sen.outs[SFA30_OUT_HCHO_ID].m_raw);
   ESP_LOGD(TAG, "RH raw: %u",dev_->sen.outs[SFA30_OUT_RH_ID].m_raw);

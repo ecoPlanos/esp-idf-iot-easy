@@ -28,16 +28,13 @@
 extern "C" {
 #endif
 
-#define ANALOG_SEN_LIB_VERSION_MAJOR 1
+#define ANALOG_SEN_LIB_VERSION_MAJOR 2
 #define ANALOG_SEN_LIB_VERSION_MINOR 0
 #define ANALOG_SEN_LIB_VERSION_PATCH 0
 #define ANALOG_SEN_LIB_VERSION  (ANALOG_SEN_LIB_VERSION_MAJOR << 16)|(ANALOG_SEN_LIB_VERSION_MINOR << 8)|ANALOG_SEN_LIB_VERSION_PATCH
 
-#define ANALOG_SEN_CONF_FILE_NAME "conf.cfg"
-#define ANALOG_SEN_DATA_FILE_NAME "dat.txt"
-#define ANALOG_SEN_FILE_DIR "ANALOG_SEN"
-#define ANALOG_SEN_CONF_FILE_PATH ANALOG_SEN_FILE_DIR "/" ANALOG_SEN_CONF_FILE_NAME
-#define ANALOG_SEN_DATA_FILE_PATH ANALOG_SEN_FILE_DIR "/" ANALOG_SEN_DATA_FILE_NAME
+#define ANALOG_SEN_ATTS_NR 4
+#define ANALOG_SEN_DEFAULT_VREF    1100
 
 /**
  * Attenuation.
@@ -55,21 +52,35 @@ typedef enum
  */
 typedef struct
 {
-    uint8_t pack_id;    // Package Identification
-    uint8_t dev_id;     // Device Identification
-    uint8_t status;
+  uint8_t pack_id;    // Package Identification
+  uint8_t dev_id;     // Device Identification
+  uint8_t status;
 } analog_sen_inf_t;
+
+/**
+ * Analog output descriptor.
+ */
+typedef struct
+{
+  esp_adc_cal_characteristics_t adc_chars[ANALOG_SEN_ATTS_NR];
+  adc_unit_t adc_unit;
+  adc_channel_t analog_channel;
+  uint32_t adc_mean;
+  uint16_t voltage;
+  uint8_t configured;
+  void (*calc_processed)(void *out);
+} analog_out_t;
 
 /**
  * Device descriptor.
  */
 typedef struct
 {
-    analog_sen_inf_t info;
-    esp_adc_cal_characteristics_t *adc_chars;
-    adc_unit_t adc_unit;
-    void (*calc_processed)(sensor_t *dev);
-    sensor_t sen;
+  uint8_t outs_nr;
+  analog_out_t *outs;
+  analog_sen_inf_t info;
+  void (*calc_processed)(void *sen);
+  sensor_t sen;
 } analog_sen_t;
 
 
@@ -80,13 +91,26 @@ typedef struct
  * @param analog_channel Analog GPIO pin
  * @param sen_id Sensor Id
  * @param sen_name Sensor Name
+ * @param outs_nr Number of sensor analog outputs
  * @param period_ms Sensor period in milliseconds
  * @return `ESP_OK` on success
  */
-esp_err_t analog_sen_init_desc( analog_sen_t *dev, adc_channel_t analog_channel, adc_unit_t unit, \
+esp_err_t analog_sen_init_desc( analog_sen_t *dev, \
                                 uint8_t samples_filter, uint32_t period_ms, \
                                 uint16_t sen_id, char sen_name[], \
+                                uint8_t outs_nr, \
                                 void *calc_processed_func);
+
+/**
+* @brief Free device descriptor
+*
+* @param dev Device descriptor
+* @param out_idx Sensor output index (id)
+* @param unit Output ADC unit
+* @param analog_channel Output ADC channel
+* @return `ESP_OK` on success
+*/
+esp_err_t analog_sen_config_output(analog_sen_t *dev, uint8_t out_idx, adc_unit_t unit, adc_channel_t analog_channel, void *calc_processed);
 
 /**
  * @brief Free device descriptor
@@ -127,7 +151,7 @@ esp_err_t analog_sen_get_channel_data(analog_sen_t *dev);
  * @param[out] lux Light intensity
  * @return `ESP_OK` on success
  */
-esp_err_t analog_sen_get_voltage(analog_sen_t *dev, uint16_t adc_reading, uint16_t *voltage);
+esp_err_t analog_sen_get_voltage(analog_sen_t *dev, uint16_t adc_reading, uint8_t out_idx, uint16_t *voltage);
 
 /**
  * @brief Set device att
