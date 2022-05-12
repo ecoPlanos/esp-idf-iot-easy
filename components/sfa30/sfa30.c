@@ -172,8 +172,8 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
   dev->sen.info.sen_id = sen_id;
   dev->sen.info.version = 1;
   dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
-  dev->sen.conf.min_period_us = 10000;
-  dev->sen.conf.delay_start_get_us = 5000;
+  dev->sen.conf.min_period_us = 100000;
+  dev->sen.conf.delay_start_get_us = 20000;
   dev->sen.info.out_nr = 3; //hcho, RH, temperature
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = SFA30_I2C_ADDRESS;

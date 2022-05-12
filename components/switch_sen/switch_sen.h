@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 #define SWITCH_SEN_LIB_VERSION_MAJOR 1
-#define SWITCH_SEN_LIB_VERSION_MINOR 0
+#define SWITCH_SEN_LIB_VERSION_MINOR 2
 #define SWITCH_SEN_LIB_VERSION_PATCH 0
 #define SWITCH_SEN_LIB_VERSION  (SWITCH_SEN_LIB_VERSION_MAJOR << 16)|(SWITCH_SEN_LIB_VERSION_MINOR << 8)|SWITCH_SEN_LIB_VERSION_PATCH
 // #define LIB_VERSION_SWITCH_SEN 1.0
@@ -54,6 +54,7 @@ typedef struct {
 typedef struct {
     uint8_t pack_id;    // Package Identification
     uint8_t dev_id;     // Device Identification
+    uint32_t model;
     // uint8_t status;
 } switch_sen_inf_t;
 
@@ -63,6 +64,7 @@ typedef struct {
 typedef struct {
     switch_sen_conf_t conf; //Sensor configuration
     switch_sen_inf_t info;  //Sensor information
+    void (*calc_processed)(void *sen);
     sensor_t sen;
 } switch_sen_t;
 
@@ -72,7 +74,7 @@ typedef struct {
  * @param dev Device descriptor
  * @return `ESP_OK` on success
  */
-esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir, uint32_t min_period_us, gpio_num_t input_pin, gpio_pullup_t pull_up_en,gpio_pulldown_t pull_down_en, uint8_t dev_id, uint8_t pack_id, uint8_t sen_id, char sen_name[]);
+esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir, uint32_t min_period_us, gpio_num_t input_pin, gpio_pullup_t pull_up_en,gpio_pulldown_t pull_down_en, uint8_t dev_id, uint8_t pack_id, uint8_t sen_id, char sen_name[], void *calc_processed);
 
 /**
  * @brief Free device descriptor

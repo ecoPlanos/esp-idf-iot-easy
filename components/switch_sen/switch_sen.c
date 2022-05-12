@@ -45,117 +45,55 @@ static void IRAM_ATTR gpio_isr_handler(void* arg) {
 }
 
 static void sw_trigger_task(void* arg) {
-  // sensor_t sen;
   sensor_t *sen = (sensor_t *)arg;
-  // uint16_t sen_id;
-  bool level, detect_running = false;
-  int64_t current_timestamp,current_trig = 0;
+  bool detect_running = false;
+  int64_t current_timestamp, current_trig = 0;
   uint32_t current_filter_cnt = 0;
-  struct timeval now;
   uint8_t io_num;
   for(;;) {
-    // if(xQueueReceive(gpio_evt_queue, &sen, portMAX_DELAY)) {
-    // if(xQueueReceive(gpio_evt_queue, &sen_id, portMAX_DELAY)) {
-    // if(xQueueReceive(gpio_evt_queue, NULL, portMAX_DELAY)) {
     if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-      // gettimeofday(&now,NULL);
-      level = gpio_get_level(sen->outs[0].gpio);
-      // ESP_LOGD(TAG, "Sensor %s (GPIO_%u) interrupt, val: %d\n", sen->info.name, io_num, level);
-      // current_timestamp = (now.tv_sec * 1000000LL + now.tv_usec);
-      current_timestamp = esp_timer_get_time();
-
-      if((sen->outs[0].out_trigger_dir == SEN_OUT_TRIGGER_FE) ^ level) {
-        if((current_timestamp - current_trig) > sen->conf.min_period_us) {
-        // if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
-          // if(detect_running) sen->outs[0].trig.filtered_count++;
-          if(detect_running) current_filter_cnt++;  //TODO: check if counter is correct!
-          else {
-            detect_running = true;
-            ESP_LOGI(TAG, "Switch type sensor %s detected something...",sen->info.name);
-            // sen->timestamp = current_timestamp;
-            current_trig = current_timestamp;
-            // sen->outs[0].trig.filtered_count = 0;
-            current_filter_cnt = 1;
+      if(io_num==sen->outs[0].gpio){
+        current_timestamp = esp_timer_get_time();
+        if(detect_running){
+          if((current_timestamp - current_trig) > sen->conf.min_period_us) {
+            detect_running = false;
+            sen->outs[0].m_raw = (uint32_t)(current_timestamp - current_trig);
+            sen->outs[0].trig_cnt = current_filter_cnt;
+            sen->esp_timestamp = current_trig;
+            ESP_LOGD(TAG, "end of detection with cntr: %u and duration: %u us",sen->outs[0].trig_cnt,sen->outs[0].m_raw);
+          } else {
+            current_filter_cnt++;
           }
         } else {
-          // sen->outs[0].trig.filtered_count++;
-          current_filter_cnt++;
-        }
-      } else {
-        if((current_timestamp - current_trig) > sen->conf.min_period_us) {
-          detect_running = false;
-          // sen->outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
-          // sen->outs[0].m_raw = (uint32_t)(current_timestamp - current_trig);
-          // sen->outs[0].trig_cnt = current_filter_cnt;
-          sen->outs[0].m_raw = (uint32_t)(current_timestamp - current_trig);
-          sen->outs[0].trig_cnt = current_filter_cnt;
-          sen->esp_timestamp = current_trig;
-          // ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
-          // ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);
-          ESP_LOGI(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].m_raw);
-          ESP_LOGI(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig_cnt);
+          ESP_LOGD(TAG, "started new detection");
+          detect_running = true;
+          current_trig = current_timestamp;
+          current_filter_cnt = 1;
         }
       }
-
-
-      // switch(sen->outs[0].out_trigger_dir) {
-      //   case SEN_OUT_TRIGGER_RE:
-      //     if(level) {
-      //       if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
-      //         if(detect_running) sen->outs[0].trig.filtered_count++;
-      //         else {
-      //           detect_running = true;
-      //           ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->info.name);
-      //           sen->timestamp = current_timestamp;
-      //           sen->outs[0].trig.filtered_count = 0;
-      //         }
-      //       } else {
-      //         sen->outs[0].trig.filtered_count++;
-      //       }
-      //     } else {
-      //       if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
-      //         // TODO: save data somwhere!
-      //         detect_running = false;
-      //         sen->outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
-      //         // sen->outs[0].trig.level = !level;
-      //         ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
-      //         ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);
-      //       }
-      //     }
-      //   break;
-      //   case SEN_OUT_TRIGGER_FE:
-      //     if(!level) {
-      //       if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
-      //         if(detect_running) sen->outs[0].trig.filtered_count++;
-      //         else {
-      //           detect_running = true;
-      //           ESP_LOGE(TAG, "Switch type sensor %s detected something...",sen->info.name);
-      //           sen->timestamp = current_timestamp;
-      //           sen->outs[0].trig.filtered_count = 0;
-      //         }
-      //       } else {
-      //         sen->outs[0].trig.filtered_count++;
-      //       }
-      //     } else {
-      //       if((current_timestamp - sen->timestamp) > sen->conf.min_period_us) {
-      //         // TODO: save data somwhere!
-      //         detect_running = false;
-      //         sen->outs[0].trig.duration = (uint32_t)(current_timestamp - sen->timestamp);
-      //         // sen->outs[0].trig.level = !level;
-      //         ESP_LOGE(TAG, "%s detected something with duration: %u",sen->info.name, sen->outs[0].trig.duration);
-      //         ESP_LOGE(TAG, "%s interrupt counts: %u",sen->info.name, sen->outs[0].trig.filtered_count);
-      //       }
-      //     }
-      //   break;
-      // }
     }
-    vTaskDelay(pdMS_TO_TICKS(sen->conf.min_period_us/10/1000));
   }
 }
 
-esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir, uint32_t min_period_us, gpio_num_t input_pin, gpio_pullup_t pull_up_en,gpio_pulldown_t pull_down_en, uint8_t dev_id, uint8_t pack_id, uint8_t sen_id, char sen_name[]) {
+static esp_err_t switch_sen_iot_sen_get_data(void *dev) {
+  switch_sen_t *switch_dev = (switch_sen_t *)dev;
+  uint8_t i;
+  ESP_LOGD(TAG, "switch_sen_iot_sen_get_data");
+  // for(i=0;i<switch_dev->outs_nr;i++){
+  //   if(switch_dev->outs[i].calc_processed != NULL)
+  //     switch_dev->outs[i].calc_processed(switch_dev);
+  // }
+  if(switch_dev->calc_processed != NULL)
+    switch_dev->calc_processed(switch_dev);
+
+  return ESP_OK;
+}
+
+esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir, uint32_t min_period_us, gpio_num_t input_pin, gpio_pullup_t pull_up_en,gpio_pulldown_t pull_down_en, uint8_t dev_id, uint8_t pack_id, uint8_t sen_id, char sen_name[], void *calc_processed) {
   CHECK_ARG(dev);
+  esp_err_t ret;
   ESP_LOGI(TAG,"Initializing switch sensor descriptor");
+  dev->calc_processed = calc_processed;
   dev->conf.gpio = input_pin;
   dev->conf.trig_dir = trigger_dir;
   dev->conf.min_period_us = min_period_us;
@@ -163,8 +101,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
 
   memset(&dev->sen, 0, sizeof(sensor_t));
   sensor_init(&dev->sen,1);
-  strncpy(dev->sen.info.name, "PIR\0", 4); //TODO: change lib to receive name as argument
-  // dev->sen.id = sen_id;
+  strcpy(dev->sen.info.name, sen_name);
   dev->sen.info.lib_id = SEN_SW_LIB_ID;
   dev->sen.info.sen_id = sen_id;
   dev->sen.info.sen_lib_version = SWITCH_SEN_LIB_VERSION;
@@ -176,7 +113,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
   dev->sen.conf.addr = 0;
   dev->sen.conf.period_ms=0;
-  dev->sen.get_data=NULL;
+  dev->sen.get_data=switch_sen_iot_sen_get_data;
   dev->sen.dev=dev;
 
   dev->sen.status.initialized = false;
@@ -186,10 +123,8 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.outs[0].out_id=0;
   dev->sen.outs[0].gpio = input_pin;
   dev->sen.outs[0].out_type = SEN_TYPE_SWITCH;
-  // dev->sen.outs[0].sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
-  dev->sen.outs[0].out_trigger_dir = trigger_dir;
+  // dev->sen.outs[0].out_trigger_dir = trigger_dir;
   dev->sen.outs[0].out_val_type=SEN_OUT_VAL_TYPE_SEN_SWITCH;
-  // dev->sen.outs[0].trig.filtered_count=0;
   dev->sen.outs[0].m_raw=0;
   dev->sen.conf.srate=0;
 
@@ -199,23 +134,13 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   io_conf.mode = GPIO_MODE_INPUT;
   io_conf.pull_up_en = pull_up_en;
   io_conf.pull_down_en = pull_down_en;
-  esp_err_t ret = gpio_config(&io_conf);
-  ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
-  if(ret != ESP_OK) return ret;
-  // ret = gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+  CHECK(gpio_config(&io_conf));
   gpio_evt_queue = xQueueCreate(10, sizeof(uint8_t));
   if(!gpio_evt_queue) return ESP_FAIL;
-  // ret = gpio_install_isr_service(ESP_INTR_FLAG_IRAM|ESP_INTR_FLAG_LEVEL6|ESP_INTR_FLAG_EDGE);
   ret = gpio_install_isr_service(ESP_INTR_FLAG_EDGE);
-  // ret = gpio_install_isr_service(0);
   ret = (ret==ESP_ERR_INVALID_STATE) ? ESP_OK : ret;  //ISR service already running...
-  ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
-  if(ret != ESP_OK) return ret;
-  // gpio_isr_handler_add(input_pin, gpio_isr_handler, (void*) (&dev->sen));
-  // ret = gpio_isr_handler_add(input_pin, gpio_isr_handler, NULL);
+  CHECK(ret);
   ret = gpio_isr_handler_add(input_pin, gpio_isr_handler, (void *) input_pin);
-  // ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
-  // if(ret != ESP_OK) return ret;
   BaseType_t task_return = xTaskCreate(&sw_trigger_task, dev->sen.info.name, 2048, (void *) (&dev->sen), 3|portPRIVILEGE_BIT, &dev->sen.outs[0].task_handle);
   configASSERT(dev->sen.outs[0].task_handle);
   if( task_return == pdPASS ) {
@@ -224,7 +149,6 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   }
   dev->sen.status.initialized = (ret==ESP_OK);
   return ret;
-  // return ESP_OK;
 }
 
 esp_err_t switch_sen_free(switch_sen_t *dev) {

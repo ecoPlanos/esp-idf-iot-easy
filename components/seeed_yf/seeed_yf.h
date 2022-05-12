@@ -15,10 +15,10 @@
  */
 
 
-#ifndef __YF_B3_H__
-#define __YF_B3_H__
+#ifndef __YF_H__
+#define __YF_H__
 
-#include <analog_sen.h>
+#include <switch_sen.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,24 +31,29 @@ extern "C" {
 
 #define YF_OUT_FLOW_ID 0
 
+typedef enum {
+  YF_MODEL_B1 = 1,
+  YF_MODEL_B2,
+  YF_MODEL_B3,
+  YF_MODEL_B4,
+  YF_MODEL_B5,
+  YF_MODEL_B6,
+  YF_MODEL_B7
+} yf_model_t;
+
 /**
  * @brief Initialize device
  *
  * @param yf_sen Analog sensor descriptor
- * @param water_unit ADC unit
- * @param water_channel ADC channel
+ * @param period_ms Period in milliseconds if sensor is read periodicaly
+ * @param min_period_us Mininmum period in microseconds ince first transition detection
+ * @param sen_id Sensor Id
+ * @param water_flow_gpio ESP GPIO number of sensor output
  * @param sen_name Sensor name
+ * @param yf_model Sensor model (B1-7)
  * @return `ESP_OK` on success
  */
-esp_err_t yf_b3_init(analog_sen_t *yf_sen, uint8_t samples_filter, uint32_t period_ms, uint16_t sen_id, adc_unit_t water_unit, adc_channel_t water_channel, char *sen_name);
-
-/**
-* @brief Calculate water flow using analog_sen
-*
-* @param yf_sen Analog sensor descriptor
-* @return `ESP_OK` on success
-*/
-esp_err_t yf_b3_calc_water_flow(void *yf_sen);
+esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t period_ms, uint32_t min_period_us, uint16_t sen_id, gpio_num_t water_flow_gpio, char *sen_name, yf_model_t yf_model);
 
 #ifdef __cplusplus
 }
@@ -56,4 +61,4 @@ esp_err_t yf_b3_calc_water_flow(void *yf_sen);
 
 /**@}*/
 
-#endif  // __YF_B3_H__
+#endif  // __YF_H__
