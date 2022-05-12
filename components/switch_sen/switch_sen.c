@@ -153,7 +153,7 @@ static void sw_trigger_task(void* arg) {
   }
 }
 
-esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir, uint32_t min_period_us, gpio_num_t input_pin, gpio_pullup_t pull_up_en,gpio_pulldown_t pull_down_en, uint8_t dev_id, uint8_t pack_id, uint8_t sen_id) {
+esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir, uint32_t min_period_us, gpio_num_t input_pin, gpio_pullup_t pull_up_en,gpio_pulldown_t pull_down_en, uint8_t dev_id, uint8_t pack_id, uint8_t sen_id, char sen_name[]) {
   CHECK_ARG(dev);
   ESP_LOGI(TAG,"Initializing switch sensor descriptor");
   dev->conf.gpio = input_pin;
