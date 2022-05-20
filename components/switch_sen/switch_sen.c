@@ -123,7 +123,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.outs[0].out_id=0;
   dev->sen.outs[0].gpio = input_pin;
   dev->sen.outs[0].out_type = SEN_TYPE_SWITCH;
-  // dev->sen.outs[0].out_trigger_dir = trigger_dir;
+  dev->sen.outs[0].out_trigger_dir = trigger_dir;
   dev->sen.outs[0].out_val_type=SEN_OUT_VAL_TYPE_SEN_SWITCH;
   dev->sen.outs[0].m_raw=0;
   dev->sen.conf.srate=0;
