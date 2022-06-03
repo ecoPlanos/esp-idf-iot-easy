@@ -75,10 +75,26 @@ static void sw_trigger_task(void* arg) {
   }
 }
 
-static esp_err_t switch_sen_iot_sen_get_data(void *dev) {
+static esp_err_t switch_iot_sen_reset(void *dev) {
+  return ESP_OK;
+}
+static esp_err_t switch_iot_sen_reinit(void *dev) {
+  return ESP_OK;
+}
+static esp_err_t switch_iot_sen_start_measurement(void *dev) {
+  return ESP_OK;
+}
+static esp_err_t switch_iot_sen_sleep_mode_awake(void *dev) {
+  return ESP_OK;
+}
+static esp_err_t switch_iot_sen_sleep_mode_sleep(void *dev) {
+  return ESP_OK;
+}
+
+static esp_err_t switch_iot_sen_get_data(void *dev) {
   switch_sen_t *switch_dev = (switch_sen_t *)dev;
   uint8_t i;
-  ESP_LOGD(TAG, "switch_sen_iot_sen_get_data");
+  ESP_LOGD(TAG, "switch_iot_sen_get_data");
   // for(i=0;i<switch_dev->outs_nr;i++){
   //   if(switch_dev->outs[i].calc_processed != NULL)
   //     switch_dev->outs[i].calc_processed(switch_dev);
@@ -106,14 +122,19 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.info.sen_id = sen_id;
   dev->sen.info.sen_lib_version = SWITCH_SEN_LIB_VERSION;
   dev->sen.info.version = 1;
-  dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL;
+  dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL;
   dev->sen.conf.min_period_us = min_period_us;
   dev->sen.conf.delay_start_get_us = 0;
   dev->sen.info.out_nr = 1;
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_EVENT;
   dev->sen.conf.addr = 0;
   dev->sen.conf.period_ms=0;
-  dev->sen.get_data=switch_sen_iot_sen_get_data;
+  dev->sen.reset=switch_iot_sen_reset;
+  dev->sen.reinit=switch_iot_sen_reinit;
+  dev->sen.start_measurement=switch_iot_sen_start_measurement;
+  dev->sen.get_data=switch_iot_sen_get_data;
+  dev->sen.awake=switch_iot_sen_sleep_mode_awake;
+  dev->sen.sleep=switch_iot_sen_sleep_mode_sleep;
   dev->sen.dev=dev;
 
   dev->sen.status.initialized = false;
@@ -147,7 +168,13 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
     ESP_LOGI(TAG, "Sensor %s event trigger task is running.",dev->sen.info.name);
     ret = ESP_OK;
   }
-  dev->sen.status.initialized = (ret==ESP_OK);
+  if(ret==ESP_OK){
+    dev->sen.status.initialized=true;
+    dev->sen.status.status_code=SEN_STATUS_OK;
+  }else{
+    dev->sen.status.initialized=false;
+    dev->sen.status.status_code=SEN_STATUS_FAIL_INIT;
+  }
   return ret;
 }
 

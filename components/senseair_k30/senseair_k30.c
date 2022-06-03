@@ -106,6 +106,7 @@ static inline esp_err_t write_ram(k30_t *dev, uint16_t ram_addr, uint8_t cmd, ui
   err = i2c_dev_write(&dev->i2c_dev, NULL, 0, out_data, 4);
   if(err != ESP_OK){
     dev->sen.status.status_code=SEN_STATUS_FAIL_WRITE;
+    dev->sen.status.fail_time=esp_timer_get_time();
     dev->sen.status.fail_reg=ram_addr;
     ESP_LOGE(TAG, "Error on i2c_dev_write with error: %02x",err);
   }
@@ -120,8 +121,11 @@ static inline esp_err_t read_resp(k30_t *dev, uint8_t *out_data, uint8_t data_si
   err = i2c_dev_read(&dev->i2c_dev, NULL, 0, out_data, data_size+2);
   if(err != ESP_OK){
     dev->sen.status.status_code=SEN_STATUS_FAIL_READ;
+    dev->sen.status.fail_time=esp_timer_get_time();
+    dev->sen.status.fail_cnt++;
     // dev->sen.status.fail_reg=ram_addr; //TODO: get last address written from status
     ESP_LOGE(TAG, "Error on i2c_dev_read with error: 0x%02x",err);
+    return err;
   }
   if((k30_checksum(out_data, data_size+1)) != out_data[data_size+2-1]){
     ESP_LOGE(TAG, "Checksum check fail! checksum calc: 0x%02x, checksum received: 0x%02x",k30_checksum(out_data, data_size+1),out_data[data_size+2-1]);
@@ -147,14 +151,15 @@ esp_err_t k30_init_desc(k30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_n
     dev->sen.info.lib_id = SEN_K30_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
-    dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
+    dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.info.out_nr = OUTPUT_NR; //CO2, Temperature, RH
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
 
     dev->sen.conf.min_period_us = 1000000;
     dev->sen.conf.addr = K30_I2C_ADDR;
-    dev->sen.conf.period_ms=nearest_prime(CONFIG_K30_DEFAULT_PERIOD_MS);
+    dev->sen.conf.period_ms=CONFIG_K30_DEFAULT_PERIOD_MS;
     dev->sen.conf.srate=0;
+    dev->sen.conf.time_to_adjust_us=0;
 
     dev->sen.timestamp=0;
     dev->sen.esp_timestamp=0;
@@ -206,10 +211,10 @@ esp_err_t k30_free_desc(k30_t *dev) {
 esp_err_t k30_init(k30_t *dev) {
     CHECK_ARG(dev);
     ESP_LOGD(TAG, "Initialize sensor.");
-    if(dev->sen.status.initialized) {
-      ESP_LOGI(TAG, "Sensor already initialized");
-      return ESP_OK;
-    }
+    // if(dev->sen.status.initialized) {
+    //   ESP_LOGI(TAG, "Sensor already initialized");
+    //   return ESP_OK;
+    // }
 
 
     //**** WARNING backup entire eeprom before any write!!!****//
@@ -237,6 +242,9 @@ esp_err_t k30_init(k30_t *dev) {
     dev->info.rev_sub = out_data[1];
     ESP_LOGI(TAG,"rev_sub: %u",dev->info.rev_sub);
     vTaskDelay(pdMS_TO_TICKS(500));
+    // dev->sen.status.initialized=true;
+    // dev->sen.status.status_code=SEN_STATUS_OK;
+    // return ESP_OK;
     I2C_DEV_CHECK_LOGE(&dev->i2c_dev, write_ram(dev, K30_RAM_SEN_TYPE, K30_COMMAND_READ_RAM, 3), "I2C error");
     vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000));
     memset(out_data,0,1+4+1);

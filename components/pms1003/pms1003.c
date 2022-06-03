@@ -164,7 +164,7 @@ static inline esp_err_t read_res_nolock(pms1003_t *dev, pms1003_raw_data_t *res)
       if(err!=ESP_OK){
         ESP_LOGE(TAG, "Couldn't get available bytes!");
         ESP_LOGI(TAG, "Assuming UART is broken and restarting...");
-        ESP_ERROR_CHECK_WITHOUT_ABORT(pms1003_init(dev));
+        // ESP_ERROR_CHECK_WITHOUT_ABORT(pms1003_init(dev));
         return ESP_FAIL;
       }
       ESP_LOGD(TAG, "Rx buffer bytes available: %d", available);
@@ -383,12 +383,11 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->sen.info.lib_id = SEN_PMS1003_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
-    dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
+    dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 1000000;
     dev->sen.info.out_nr = 12;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
-    dev->sen.conf.period_ms=nearest_prime(CONFIG_PMS1003_DEFAULT_PERIOD_MS);
-    dev->sen.conf.period_ms=15000;
+    dev->sen.conf.period_ms=CONFIG_PMS1003_DEFAULT_PERIOD_MS;
     dev->sen.dev=dev;
     dev->sen.reset=pms1003_iot_sen_reset;
     dev->sen.reinit=pms1003_iot_sen_reinit;
@@ -521,7 +520,7 @@ esp_err_t pms1003_init(pms1003_t *dev) {
   // CHECK(uart_set_pin(dev->uart_dev.port, dev->uart_dev.tx_io_num, dev->uart_dev.rx_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
   // CHECK(uart_driver_install(dev->uart_dev.port, 256, 256, 0, NULL, dev->uart_dev.intr_alloc_flags));
   // CHECK(uart_driver_install(dev->uart_dev.port, dev->uart_dev.rx_buffer_size, dev->uart_dev.tx_buffer_size, dev->uart_dev.queue_size, &dev->uart_dev.queue, dev->uart_dev.intr_alloc_flags));
-  // vTaskDelay(pdMS_TO_TICKS(600000));
+  vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_after_awake_us/1000));
 
   /* Set pattern interrupt, used to detect the end of a line */
   // uart_enable_pattern_det_baud_intr(dev->uart_dev.port, START_BYTE_1, 1, 9, 0, 0);
@@ -540,7 +539,8 @@ esp_err_t pms1003_init(pms1003_t *dev) {
   ESP_LOGD(TAG, "time untill get data: %llu", (esp_timer_get_time()-init_start));
   // CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_SLEEP));
   if(available>=PMS1003_DATA_FRAME_LENGTH+4){
-    dev->sen.status.initialized = 1;
+    dev->sen.status.initialized = true;
+    dev->sen.status.status_code=SEN_STATUS_OK;
     ESP_LOGI(TAG, "Sensor initialized!");
     return ESP_OK;
   }

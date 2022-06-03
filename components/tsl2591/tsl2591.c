@@ -204,9 +204,9 @@ static inline esp_err_t read_control_register(tsl2591_t *dev, uint8_t *value) {
         return ESP_FAIL;
       break;
     }
-    dev->sen.conf.delay_after_awake_us = (int_times[i_idx]+50)*1000;
-    dev->sen.conf.time_to_adjust_us = (int_times[i_idx]+50)*1000*(TSL2591_GAINS_NR+1);
-    dev->sen.conf.delay_start_get_us = (int_times[i_idx]+50)*1000;
+    dev->sen.conf.delay_after_awake_us = (int_times[i_idx]+150)*1000;
+    dev->sen.conf.time_to_adjust_us = (int_times[i_idx]+150)*1000*(TSL2591_GAINS_NR+1);
+    dev->sen.conf.delay_start_get_us = (int_times[i_idx]+150)*1000;
     dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.idx=i_idx;
     dev->sen.outs[TSL2591_OUT_CH1_ID].itimes_agc.idx=i_idx;
 
@@ -321,14 +321,16 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.info.lib_id = SEN_TSL2591_LIB_ID;
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
-    dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
+    dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.info.out_nr = 2; //channel 0 (Full spectrum),channel 1 (IR) and a virtual channel 2 (Visible spectrum)
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
 
     dev->sen.conf.min_period_us = 110000;
     dev->sen.conf.addr = TSL2591_I2C_ADDR;
-    dev->sen.conf.period_ms=nearest_prime(CONFIG_TSL2591_DEFAULT_PERIOD_MS);
+    dev->sen.conf.period_ms=CONFIG_TSL2591_DEFAULT_PERIOD_MS;
     dev->sen.conf.srate=0;
+    dev->sen.conf.delay_start_get_us = 650000;
+    dev->sen.conf.delay_after_awake_us = 100000;
 
     dev->sen.timestamp=0;
     dev->sen.dev=dev;
@@ -341,7 +343,6 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     // dev->sen.gain_adjust=tsl2591_iot_sen_gain_adjust;
     dev->sen.sleep=tsl2591_iot_sen_sleep_mode_sleep;
 
-    dev->sen.conf.delay_start_get_us = 650000;
     dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
@@ -459,7 +460,6 @@ esp_err_t tsl2591_init(tsl2591_t *dev) {
     //     SLEEP_MS(610);
     //     break;
     // }
-    dev->sen.status.status_code=SEN_STATUS_OK;
     return ESP_OK;
 }
 

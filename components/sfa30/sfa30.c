@@ -171,13 +171,13 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
   dev->sen.info.lib_id = SEN_SFA30_LIB_ID;
   dev->sen.info.sen_id = sen_id;
   dev->sen.info.version = 1;
-  dev->sen.conf.com_type = SEN_COM_TYPE_DIGITAL_COM;
+  dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
   dev->sen.conf.min_period_us = 100000;
   dev->sen.conf.delay_start_get_us = 20000;
   dev->sen.info.out_nr = 3; //hcho, RH, temperature
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = SFA30_I2C_ADDRESS;
-  dev->sen.conf.period_ms = nearest_prime(CONFIG_SFA30_DEFAULT_PERIOD_MS);
+  dev->sen.conf.period_ms = CONFIG_SFA30_DEFAULT_PERIOD_MS;
   dev->sen.conf.delay_after_awake_us=100000;
   dev->sen.conf.time_to_adjust_us=0;
   dev->sen.dev=dev;
@@ -262,7 +262,6 @@ esp_err_t sfa30_get_device_marking(sfa30_t *dev, uint8_t device_marking[]) {
   return ESP_OK;
 }
 esp_err_t sfa30_measure(sfa30_t *dev, float *hcho, float *humidity, float *temperature) {
-  struct timeval tv;
   CHECK_ARG(dev && (hcho || temperature || humidity));
 
   sfa30_raw_data_t raw;
