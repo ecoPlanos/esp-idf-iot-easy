@@ -137,7 +137,6 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.sleep=switch_iot_sen_sleep_mode_sleep;
   dev->sen.dev=dev;
 
-  dev->sen.status.initialized = false;
   dev->sen.status.fail_cnt = 0;
   dev->sen.status.fail_time = 0;
 
@@ -169,10 +168,8 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
     ret = ESP_OK;
   }
   if(ret==ESP_OK){
-    dev->sen.status.initialized=true;
     dev->sen.status.status_code=SEN_STATUS_OK;
   }else{
-    dev->sen.status.initialized=false;
     dev->sen.status.status_code=SEN_STATUS_FAIL_INIT;
   }
   return ret;

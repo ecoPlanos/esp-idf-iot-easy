@@ -210,7 +210,6 @@ esp_err_t bmp280_init(bmp280_t *dev, bmp280_params_t *params)
 
     if (dev->id != BMP280_CHIP_ID && dev->id != BME280_CHIP_ID)
     {
-        dev->sen.status.initialized=false;
         dev->sen.status.status_code=SEN_STATUS_FAIL_INIT;
         CHECK_LOGE(dev, ESP_ERR_INVALID_VERSION,
                 "Invalid chip ID: expected: 0x%x (BME280) or 0x%x (BMP280) got: 0x%x",

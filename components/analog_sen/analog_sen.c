@@ -198,7 +198,6 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, \
     dev->sen.conf.time_to_adjust_us = 10000*(ANALOG_SEN_ATTS_NR+1);
     dev->sen.info.out_nr = outs_nr;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
-    dev->sen.timestamp=0;
     dev->sen.esp_timestamp=0;
     dev->sen.dev=dev;
     dev->sen.reset=analog_sen_iot_sen_reset;
@@ -210,7 +209,6 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, \
     dev->sen.gain_adjust=analog_sen_iot_sen_start_measurement;
     dev->sen.sleep=analog_sen_iot_sen_sleep_mode_sleep;
 
-    dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
     CHECK(analog_sen_outs_init(dev));
@@ -261,7 +259,6 @@ esp_err_t analog_sen_init(analog_sen_t *dev) {
     adc1_config_channel_atten(dev->sen.outs[i].gpio, dev->sen.outs[i].atts_agc.idx);
   }
 
-  dev->sen.status.initialized=true;
   dev->sen.status.status_code = SEN_STATUS_OK;
 
   return ESP_OK;

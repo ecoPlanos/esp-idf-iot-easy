@@ -172,7 +172,7 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
   dev->sen.info.sen_id = sen_id;
   dev->sen.info.version = 1;
   dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
-  dev->sen.conf.min_period_us = 100000;
+  dev->sen.conf.min_period_us = 250000;
   dev->sen.conf.delay_start_get_us = 20000;
   dev->sen.info.out_nr = 3; //hcho, RH, temperature
   dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
@@ -188,7 +188,6 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
   dev->sen.awake=sfa30_iot_sen_sleep_mode_awake;
   dev->sen.sleep=sfa30_iot_sen_sleep_mode_sleep;
 
-  dev->sen.status.initialized = false;
   dev->sen.status.fail_cnt = 0;
   dev->sen.status.fail_time = 0;
 
@@ -238,7 +237,7 @@ esp_err_t sfa30_init(sfa30_t *dev) {
   CHECK(sfa30_get_device_marking(dev, device_marking));
   vTaskDelay(pdMS_TO_TICKS(10));
   CHECK(sfa30_measure(dev, &hcho, &humidity, &temperature));
-  dev->sen.status.initialized = true;           //TODO: find stratagy to check if it is connected
+  //TODO: find stratagy to check if it is connected
   dev->sen.status.status_code = SEN_STATUS_OK;
   return ESP_OK;
 }

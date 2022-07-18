@@ -325,14 +325,13 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.info.out_nr = 2; //channel 0 (Full spectrum),channel 1 (IR) and a virtual channel 2 (Visible spectrum)
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
 
-    dev->sen.conf.min_period_us = 110000;
+    dev->sen.conf.min_period_us = 120000;
     dev->sen.conf.addr = TSL2591_I2C_ADDR;
     dev->sen.conf.period_ms=CONFIG_TSL2591_DEFAULT_PERIOD_MS;
     dev->sen.conf.srate=0;
     dev->sen.conf.delay_start_get_us = 650000;
     dev->sen.conf.delay_after_awake_us = 100000;
 
-    dev->sen.timestamp=0;
     dev->sen.dev=dev;
     dev->sen.reset=tsl2591_iot_sen_reset;
     dev->sen.reinit=tsl2591_iot_sen_reinit;
@@ -343,7 +342,6 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     // dev->sen.gain_adjust=tsl2591_iot_sen_gain_adjust;
     dev->sen.sleep=tsl2591_iot_sen_sleep_mode_sleep;
 
-    dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
 
@@ -421,8 +419,7 @@ esp_err_t tsl2591_init(tsl2591_t *dev) {
 
     if(dev->info.dev_id!=0x50) {
       ESP_LOGE(TAG, "Device ID: %x differs from expected ID: %x", tmp_reg,0x50);
-      dev->sen.status.initialized = false;
-      dev->sen.status.fail_cnt++;
+
       dev->sen.status.fail_reg = TSL2591_REGISTER_DEVICE_ID;
       time(&dev->sen.status.fail_time);
       dev->sen.status.status_code=SEN_STATUS_FAIL_CHECKSUM;
@@ -432,7 +429,6 @@ esp_err_t tsl2591_init(tsl2591_t *dev) {
     tsl2591_set_integration_time(dev, TSL2591_INTEGRATION_100MS);
 
     tsl2591_basic_disable(dev);
-    dev->sen.status.initialized=true;
     dev->sen.status.status_code = SEN_STATUS_OK;
     // dev->sen.info.sen_lib_version = TSL2591_LIB_VERSION;
     // Wait until the first integration cycle is completed.

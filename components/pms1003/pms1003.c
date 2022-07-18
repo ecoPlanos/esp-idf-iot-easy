@@ -325,7 +325,7 @@ static inline bool is_measuring(pms1003_t *dev) {
 }
 
 static inline void print_raw_values(pms1003_t *dev) {
-  ESP_LOGD(TAG, "timestamp: %llu",dev->sen.timestamp);
+  ESP_LOGD(TAG, "esp_timestamp: %llu",dev->sen.esp_timestamp);
   ESP_LOGD(TAG, "PM1.0: %u",dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw);
   ESP_LOGD(TAG, "PM2.5: %u",dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw);
   ESP_LOGD(TAG, "PM2.5: %u",dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].m_raw);
@@ -384,7 +384,7 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
     dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
-    dev->sen.conf.min_period_us = 1000000;
+    dev->sen.conf.min_period_us = 30000000;
     dev->sen.info.out_nr = 12;
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.period_ms=CONFIG_PMS1003_DEFAULT_PERIOD_MS;
@@ -398,7 +398,6 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
 
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
-    dev->sen.status.initialized = false;
     dev->sen.status.delay_m_us = 0;
 
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ID;
@@ -539,7 +538,6 @@ esp_err_t pms1003_init(pms1003_t *dev) {
   ESP_LOGD(TAG, "time untill get data: %llu", (esp_timer_get_time()-init_start));
   // CHECK(pms1003_set_sleep_mode(dev, PMS1003_SLEEP_MODE_SLEEP));
   if(available>=PMS1003_DATA_FRAME_LENGTH+4){
-    dev->sen.status.initialized = true;
     dev->sen.status.status_code=SEN_STATUS_OK;
     ESP_LOGI(TAG, "Sensor initialized!");
     return ESP_OK;

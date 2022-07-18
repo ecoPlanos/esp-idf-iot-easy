@@ -155,13 +155,12 @@ esp_err_t k30_init_desc(k30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_n
     dev->sen.info.out_nr = OUTPUT_NR; //CO2, Temperature, RH
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
 
-    dev->sen.conf.min_period_us = 1000000;
+    dev->sen.conf.min_period_us = 10000000;
     dev->sen.conf.addr = K30_I2C_ADDR;
     dev->sen.conf.period_ms=CONFIG_K30_DEFAULT_PERIOD_MS;
     dev->sen.conf.srate=0;
     dev->sen.conf.time_to_adjust_us=0;
 
-    dev->sen.timestamp=0;
     dev->sen.esp_timestamp=0;
     dev->sen.dev=dev;
     dev->sen.reset=k30_iot_sen_reset;
@@ -173,7 +172,6 @@ esp_err_t k30_init_desc(k30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_n
     dev->sen.sleep=k30_iot_sen_sleep_mode_sleep;
 
     dev->sen.conf.delay_start_get_us = 120000;
-    dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
 
@@ -211,11 +209,6 @@ esp_err_t k30_free_desc(k30_t *dev) {
 esp_err_t k30_init(k30_t *dev) {
     CHECK_ARG(dev);
     ESP_LOGD(TAG, "Initialize sensor.");
-    // if(dev->sen.status.initialized) {
-    //   ESP_LOGI(TAG, "Sensor already initialized");
-    //   return ESP_OK;
-    // }
-
 
     //**** WARNING backup entire eeprom before any write!!!****//
     // Enable Dynamical frac algorithm if it is not enabled
@@ -242,9 +235,6 @@ esp_err_t k30_init(k30_t *dev) {
     dev->info.rev_sub = out_data[1];
     ESP_LOGI(TAG,"rev_sub: %u",dev->info.rev_sub);
     vTaskDelay(pdMS_TO_TICKS(500));
-    // dev->sen.status.initialized=true;
-    // dev->sen.status.status_code=SEN_STATUS_OK;
-    // return ESP_OK;
     I2C_DEV_CHECK_LOGE(&dev->i2c_dev, write_ram(dev, K30_RAM_SEN_TYPE, K30_COMMAND_READ_RAM, 3), "I2C error");
     vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000));
     memset(out_data,0,1+4+1);
@@ -267,7 +257,6 @@ esp_err_t k30_init(k30_t *dev) {
     ESP_LOGI(TAG,"sen_mem_map_id: %u",dev->info.sen_mem_map_id);
     I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
 
-    dev->sen.status.initialized=true;
     dev->sen.status.status_code=SEN_STATUS_OK;
     return ESP_OK;
 }

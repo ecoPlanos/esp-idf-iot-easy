@@ -37,11 +37,12 @@
  * BSD Licensed as described in the file LICENSE
  */
 #include <data_manager.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <esp_log.h>
 #include <esp_idf_lib_helpers.h>
 #include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <iot_time.h>
 #include <stdlib.h>
 #include <string.h>
 #include "bme680.h"
@@ -605,7 +606,6 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.awake=bme680_iot_sen_sleep_mode_awake;
   dev->sen.sleep=bme680_iot_sen_sleep_mode_sleep;
 
-  dev->sen.status.initialized = false;
   dev->sen.status.fail_cnt = 0;
   dev->sen.status.fail_time = 0;
 
@@ -747,7 +747,6 @@ esp_err_t bme680_init_sensor(bme680_t *dev) {
     CHECK_ARG(dev);
     ESP_LOGI(TAG,"Initializing BME680 sensor");
 
-    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
 
     dev->meas_started = false;
     dev->meas_status = 0;
@@ -761,6 +760,7 @@ esp_err_t bme680_init_sensor(bme680_t *dev) {
     memset(dev->settings.heater_duration, 0, sizeof(uint16_t) * 10);
 
     // reset the sensor
+    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
     I2C_DEV_CHECK(&dev->i2c_dev, write_reg_8_nolock(dev, BME680_REG_RESET, BME680_RESET_CMD));
     vTaskDelay(pdMS_TO_TICKS(BME680_RESET_PERIOD));
 
@@ -769,11 +769,9 @@ esp_err_t bme680_init_sensor(bme680_t *dev) {
     {
         I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
         ESP_LOGE(TAG, "Chip id %02x is wrong, should be 0x61", dev->info.dev_id);
-        dev->sen.status.initialized = false;
         dev->sen.status.status_code=SEN_STATUS_FAIL_CHECKSUM;
         return ESP_ERR_NOT_FOUND;
     }
-    dev->sen.status.initialized = true;
     dev->sen.status.status_code = SEN_STATUS_OK;
     dev->sen.info.sen_lib_version = BME680_LIB_VERSION;
     uint8_t buf[BME680_CDM_SIZE];
@@ -1212,10 +1210,10 @@ esp_err_t bme680_iot_sen_get_data(void *dev) {
   bsec_output_t outputs[14];
   bme680_values_float_t bme680_values_float;
   CHECK(bme680_get_results_float((bme680_t*) dev, &bme680_values_float));
-  inputs[0].time_stamp = dev_->sen.timestamp;
-  inputs[1].time_stamp = dev_->sen.timestamp;
-  inputs[2].time_stamp = dev_->sen.timestamp;
-  inputs[3].time_stamp = dev_->sen.timestamp;
+  inputs[0].time_stamp = iot_get_unix_time(dev_->sen.esp_timestamp);
+  inputs[1].time_stamp = iot_get_unix_time(dev_->sen.esp_timestamp);
+  inputs[2].time_stamp = iot_get_unix_time(dev_->sen.esp_timestamp);
+  inputs[3].time_stamp = iot_get_unix_time(dev_->sen.esp_timestamp);
   inputs[0].signal = bme680_values_float.gas_resistance;
   inputs[1].signal = bme680_values_float.temperature;
   inputs[2].signal = bme680_values_float.humidity;

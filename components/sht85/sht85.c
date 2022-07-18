@@ -220,7 +220,7 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
     dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
-    dev->sen.conf.min_period_us = 0;
+    dev->sen.conf.min_period_us = 8000000;
     dev->sen.conf.delay_start_get_us = 10000;
     dev->sen.info.out_nr = 2; //temperature, RH
     dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
@@ -236,7 +236,6 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.awake=sht85_iot_sen_sleep_mode_awake;
     dev->sen.sleep=sht85_iot_sen_sleep_mode_sleep;
 
-    dev->sen.status.initialized = false;
     dev->sen.status.fail_cnt = 0;
     dev->sen.status.fail_time = 0;
 
@@ -286,7 +285,6 @@ esp_err_t sht85_init(sht85_t *dev) {
   //   return ret;
   // }
   // dev->serial = ((uint32_t)s[0] << 24) | ((uint32_t)s[1] << 16) | ((uint32_t)s[3] << 8) | s[4];
-  dev->sen.status.initialized = true;
   dev->sen.status.status_code = SEN_STATUS_OK;
   return ESP_OK;
 }
