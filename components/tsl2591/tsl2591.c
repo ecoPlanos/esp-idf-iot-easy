@@ -1013,6 +1013,8 @@ esp_err_t tsl2591_iot_sen_get_data(void *dev) {
 
 esp_err_t tsl2591_iot_sen_sleep_mode_awake(void *dev) {
   tsl2591_t* dev_ = (tsl2591_t*) dev;
+  // uint8_t tmp_reg = 0;
+  // I2C_DEV_CHECK(&dev->i2c_dev, read_enable_register(dev_, &tmp_reg));
   if(!(dev_->settings.enable_reg & TSL2591_ALS_ON) || !(dev_->settings.enable_reg & TSL2591_POWER_ON))
     return tsl2591_basic_enable(dev_);
   return ESP_OK;
@@ -1020,6 +1022,8 @@ esp_err_t tsl2591_iot_sen_sleep_mode_awake(void *dev) {
 
 esp_err_t tsl2591_iot_sen_sleep_mode_sleep(void *dev) {
   tsl2591_t* dev_ = (tsl2591_t*) dev;
+  // uint8_t tmp_reg = 0;
+  // I2C_DEV_CHECK(&dev->i2c_dev, read_enable_register(dev_, &tmp_reg));
   if((dev_->settings.enable_reg & TSL2591_ALS_ON) && (dev_->settings.enable_reg & TSL2591_POWER_ON))
     return tsl2591_basic_disable(dev_);
   return ESP_OK;
