@@ -157,6 +157,7 @@ esp_err_t virtual_sensor_iot_sen_start_measurement(void *dev) {
 esp_err_t virtual_sensor_iot_sen_get_data(void *dev) {
   float temperature, humidity;
   virtual_sensor_t *dev_ = (virtual_sensor_t *)dev;
+  vTaskDelay(pdMS_TO_TICKS(100)); //Simulate some delay getting data
   dev_->meas_get_time = esp_timer_get_time();
   dev_->sen.esp_timestamp = esp_timer_get_time();
 
