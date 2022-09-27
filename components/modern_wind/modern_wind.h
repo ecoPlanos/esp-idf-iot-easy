@@ -29,13 +29,19 @@ extern "C" {
 #define MODERN_WIND_LIB_VERSION_PATCH 0
 #define MODERN_WIND_LIB_VERSION  (MODERN_WIND_LIB_VERSION_MAJOR << 16)|(MODERN_WIND_LIB_VERSION_MINOR << 8)|MODERN_WIND_LIB_VERSION_PATCH
 
+#define MODERN_WIND_ZERO_WIND_MV 1369.2
+#define MODERN_WIND_TEMPERATURE_TC 19.5
+#define MODERN_WIND_TEMPERATURE_V0 400
+
 enum {
   MODERN_WIND_WIND_ID = 0,
   MODERN_WIND_TEMP_ID
 };
 
 typedef struct {
-  uint16_t zero_wind_mv;
+  float zero_wind_mv; // zero wind voltage
+  float tc;  // temperature coefficient
+  float v0;  // the voltage at zero degrees C
 }modern_wind_conf_t;
 /**
  * @brief Initialize device
