@@ -46,7 +46,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bme680.h"
+#ifdef CONFIG_BME680_USE_ALGOBSE_LIB
 #include "bsec_interface.h"
+#endif
 
 #define I2C_FREQ_HZ 1000000 // Up to 3.4MHz, but esp-idf only supports 1MHz TODO: adjust pull-up resistors to get higher clock rates
 // #define I2C_FREQ_HZ 100000 // Up to 3.4MHz, but esp-idf only supports 1MHz TODO: adjust pull-up resistors to get higher clock rates
@@ -636,7 +638,7 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.outs[BME680_OUT_GAS_ID].m_raw=0;
   dev->sen.outs[BME680_OUT_GAS_ID].resistance=0.0;
   // dev->sen.outs[BME680_OUT_GAS_ID].conf.srate=0;
-
+#ifdef CONFIG_BME680_USE_ALGOBSE_LIB
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_id=BME680_BSEC_OUT_IAQ_ID;
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_type=SEN_TYPE_GAS;
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
@@ -734,6 +736,7 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   // }
   // bsec_bme_settings_t sen_settings;
   // bsec_sensor_control(dev->sen.timestamp, &sen_settings);
+#endif
   return i2c_dev_create_mutex(&dev->i2c_dev);
 }
 
@@ -828,7 +831,7 @@ esp_err_t bme680_init_sensor(bme680_t *dev) {
 
     bme680_get_measurement_duration(dev, &dev->sen.status.delay_m_us);
     dev->sen.status.delay_m_us=pdTICKS_TO_MS(dev->sen.status.delay_m_us)*1000LL+50;
-
+#ifdef CONFIG_BME680_USE_ALGOBSE_LIB
     // bsec_sensor_configuration_t requested_virtual_sensors[4];
     // uint8_t n_requested_virtual_sensors = 4;
     //
@@ -851,7 +854,7 @@ esp_err_t bme680_init_sensor(bme680_t *dev) {
     //   ESP_LOGE(TAG, "Error updating BSEC subscription: %d.",status);
     //   return ESP_FAIL;
     // };
-
+#endif
     return ESP_OK;
 }
 
@@ -1205,11 +1208,12 @@ esp_err_t bme680_iot_sen_start_measurement(void *dev) {
 esp_err_t bme680_iot_sen_get_data(void *dev) {
   bme680_t *dev_ = (bme680_t *) dev;
   uint8_t n_outputs;
+  bme680_values_float_t bme680_values_float;
+  CHECK(bme680_get_results_float((bme680_t*) dev, &bme680_values_float));
+#ifdef CONFIG_BME680_USE_ALGOBSE_LIB
   bsec_library_return_t status;
   bsec_input_t inputs[4];
   bsec_output_t outputs[14];
-  bme680_values_float_t bme680_values_float;
-  CHECK(bme680_get_results_float((bme680_t*) dev, &bme680_values_float));
   // inputs[0].time_stamp = iot_get_unix_time(dev_->sen.esp_timestamp);
   // inputs[1].time_stamp = inputs[0].time_stamp;
   // inputs[2].time_stamp = inputs[0].time_stamp;
@@ -1288,6 +1292,7 @@ esp_err_t bme680_iot_sen_get_data(void *dev) {
   //   vTaskDelay(pdMS_TO_TICKS(500));
   //   return ESP_FAIL;
   // }
+#endif
   return ESP_OK;
 }
 

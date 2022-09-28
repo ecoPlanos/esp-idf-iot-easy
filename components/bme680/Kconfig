@@ -17,4 +17,10 @@ config BME680_DEFAULT_PERIOD_MS
     range 0 4294967295
     help
         Default data acquisition period in milliseconds.
+
+config BME680_USE_ALGOBSE_LIB
+    bool "Use algobesec binaries"
+    default false
+    help
+        Use Bosch algobesec binaries to calculate several outputs.
 endmenu
