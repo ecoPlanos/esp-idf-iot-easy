@@ -62,3 +62,6 @@ sdkconfig
 /__garbage__/
 /.vscode/
 /esp-idf-lib.code-workspace
+
+#Blobs
+components/algobsec
