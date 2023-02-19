@@ -966,7 +966,7 @@ esp_err_t bme680_get_results_fixed(bme680_t *dev, bme680_values_fixed_t *results
 
     bme680_raw_data_t raw;
     CHECK(bme680_get_raw_data(dev, &raw));
-    dev->sen.esp_timestamp = dev->sen.meas_started_us+dev->sen.conf.delay_start_get_us;
+    dev->sen.esp_timestamp = dev->sen.meas_end_us+dev->sen.conf.delay_start_get_us;
     // use compensation algorithms to compute sensor values in fixed point format
     if (dev->settings.osr_temperature)
         results->temperature = bme680_convert_temperature(dev, raw.temperature);
