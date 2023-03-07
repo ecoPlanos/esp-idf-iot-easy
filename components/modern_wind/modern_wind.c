@@ -59,6 +59,7 @@ static inline esp_err_t modern_wind_calc_wind_speed(void *modern_wind_sen){
 }
 
 esp_err_t modern_wind_init(modern_wind_t *modern_wind_sen, uint8_t samples_filter, uint32_t period_ms, uint16_t sen_id, adc_unit_t wind_unit, adc_channel_t wind_channel, adc_unit_t tmp_unit, adc_channel_t tmp_channel, gpio_num_t shdn_gpio, char *sen_name){
+  ESP_LOGI(TAG, "MODERN_WIND initializing...");
   CHECK_ARG(modern_wind_sen);
   memset(&modern_wind_sen->analog_sen, 0, sizeof(analog_sen_t));
   // CHECK(analog_sen_init_desc(modern_wind_sen, samples_filter, period_ms, sen_id, sen_name, 2, NULL));
@@ -75,14 +76,18 @@ esp_err_t modern_wind_init(modern_wind_t *modern_wind_sen, uint8_t samples_filte
   modern_wind_sen->conf.shdn_gpio=shdn_gpio;
   modern_wind_sen->analog_sen.sen.awake=modern_wind_iot_sen_sleep_mode_awake;
   modern_wind_sen->analog_sen.sen.sleep=modern_wind_iot_sen_sleep_mode_sleep;
+  modern_wind_sen->analog_sen.sen.conf.min_period_us = 5000000;
+  modern_wind_sen->analog_sen.sen.conf.delay_start_get_us = 1000000;
+  modern_wind_sen->analog_sen.sen.conf.delay_after_awake_us = 100000;
 #ifdef CONFIG_MODERN_WIND_USE_HW_CTRL
   gpio_config_t io_conf;
-  ESP_LOGI(TAG, "MODERN_WIND initializing...");
   io_conf.intr_type = GPIO_INTR_DISABLE;
   io_conf.pin_bit_mask = (1ULL<<modern_wind_sen->conf.shdn_gpio);
   io_conf.mode = GPIO_MODE_OUTPUT;
   io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
   io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
+  CHECK(gpio_config(&io_conf));
+  CHECK(gpio_set_level(modern_wind_sen->conf.shdn_gpio 0));
 #endif
   modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_WIND_ID].out_type = SEN_TYPE_WIND;
   modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_WIND_ID].wind_speed=0.0;

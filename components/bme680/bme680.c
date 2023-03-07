@@ -321,7 +321,7 @@ static esp_err_t bme680_get_raw_data(bme680_t *dev, bme680_raw_data_t *raw_data)
     }
     // gettimeofday(&tv, NULL);
     // dev->sen.timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-    // dev->sen.esp_timestamp = esp_timer_get_time();
+    dev->sen.esp_timestamp = esp_timer_get_time();
     dev->meas_started = false;
     raw_data->gas_index = dev->meas_status & BME680_GAS_MEAS_INDEX_BITS;
 
@@ -967,6 +967,7 @@ esp_err_t bme680_get_results_fixed(bme680_t *dev, bme680_values_fixed_t *results
     bme680_raw_data_t raw;
     CHECK(bme680_get_raw_data(dev, &raw));
     dev->sen.esp_timestamp = dev->sen.meas_end_us+dev->sen.conf.delay_start_get_us;
+    // dev->sen.esp_timestamp = dev->sen.meas_start_us+dev->sen.conf.delay_start_get_us;
     // use compensation algorithms to compute sensor values in fixed point format
     if (dev->settings.osr_temperature)
         results->temperature = bme680_convert_temperature(dev, raw.temperature);
