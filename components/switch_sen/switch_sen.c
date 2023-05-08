@@ -285,10 +285,11 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
     dev->sen.outs[0].out_type=SEN_TYPE_SWITCH_ACTUATOR_PWM;
     io_conf.mode = GPIO_MODE_OUTPUT;
   } else if(switch_type==SWITCH_TYPE_ACTUATOR) {
-    dev->sen.outs[0].out_type=SEN_TYPE_SWITCH_ACTUATOR;
+    dev->sen.outs[0].out_type=SEN_TYPE_SWITCH;
     io_conf.mode = GPIO_MODE_INPUT_OUTPUT;
   } else {
     io_conf.mode = GPIO_MODE_INPUT;
+    dev->sen.outs[0].out_type=SEN_TYPE_SWITCH;
   }
   io_conf.pull_up_en = pull_up_en;
   io_conf.pull_down_en = pull_down_en;
