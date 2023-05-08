@@ -53,7 +53,7 @@ typedef enum {
  * @param yf_model Sensor model (B1-7)
  * @return `ESP_OK` on success
  */
-esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t period_ms, uint32_t min_period_us, uint16_t sen_id, gpio_num_t water_flow_gpio, char *sen_name, yf_model_t yf_model);
+esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t min_period_us, uint32_t period_ms, uint16_t sen_id, gpio_num_t water_flow_gpio, char *sen_name, yf_model_t yf_model);
 
 #ifdef __cplusplus
 }

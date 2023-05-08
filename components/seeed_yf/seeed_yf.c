@@ -29,22 +29,26 @@ static const char *TAG = "seeed_YF";
 #define CHECK_ARG(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 #define SLEEP_MS(x) do { vTaskDelay(pdMS_TO_TICKS(x)); } while (0)
 
-static esp_err_t yf_calc_water_flow(void *yf_sen){
+static void yf_calc_water_flow(void *yf_sen){
   switch_sen_t *yf_sen_ = (switch_sen_t *)yf_sen;
-  ESP_LOGD(TAG, "trigger_cnt: %u times", yf_sen_->sen.outs[YF_OUT_FLOW_ID].trig_cnt);
-  ESP_LOGD(TAG, "tirg_duration: %u us", yf_sen_->sen.outs[YF_OUT_FLOW_ID].m_raw);
+  ESP_LOGD(TAG, "trigger_cnt: %u times", yf_sen_->trig_cnt);
+  ESP_LOGD(TAG, "tirg_duration: %u us", yf_sen_->trig_duration);
   ESP_LOGD(TAG, "using factor: %f", YF_FACTOR[(yf_model_t)yf_sen_->info.model]);
-  yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = ((((float)yf_sen_->sen.outs[YF_OUT_FLOW_ID].trig_cnt)/2.0)/\
-                                            (((float)yf_sen_->sen.outs[YF_OUT_FLOW_ID].m_raw)/1000000.0))/\
+  if((yf_sen_->trig_cnt == 0) || (yf_sen_->trig_duration == 0)) {
+    yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = 0.0;
+    return;
+  }
+  yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = ((((float)yf_sen_->trig_cnt)/2.0)/\
+                                            (((float)yf_sen_->trig_duration)/1000000.0))/\
                                             YF_FACTOR[(yf_model_t)yf_sen_->info.model];
   ESP_LOGD(TAG, "L/m: %f", yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow);
-  return ESP_OK;
 }
 
-esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t period_ms, uint32_t min_period_us, uint16_t sen_id, gpio_num_t water_flow_gpio, char *sen_name, yf_model_t yf_model){
+esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t min_period_us, uint32_t period_ms, uint16_t sen_id, gpio_num_t water_flow_gpio, char *sen_name, yf_model_t yf_model){
   CHECK_ARG(yf_sen);
-  CHECK(switch_sen_init(yf_sen, SEN_OUT_TRIGGER_RE, min_period_us, water_flow_gpio, GPIO_PULLUP_DISABLE, GPIO_PULLDOWN_ENABLE, 0, 0, sen_id, sen_name, yf_calc_water_flow));
-  yf_sen->sen.conf.period_ms = period_ms;
+  CHECK(switch_sen_init(yf_sen, SEN_OUT_TRIGGER_RE, min_period_us, 0, water_flow_gpio, GPIO_PULLUP_DISABLE, GPIO_PULLDOWN_ENABLE, 0, 0, sen_id, sen_name, SWITCH_TYPE_COUNTER, yf_calc_water_flow));
+  // yf_sen->sen.conf.period_ms = period_ms;
+  // yf_sen->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   yf_sen->sen.outs[YF_OUT_FLOW_ID].out_type = SEN_TYPE_WATER_FLOW;
   yf_sen->sen.outs[YF_OUT_FLOW_ID].flow=0.0;
   yf_sen->info.model=yf_model;

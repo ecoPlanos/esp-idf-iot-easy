@@ -38,6 +38,16 @@ extern "C" {
 #define SWITCH_SEN_CONF_FILE_PATH SWITCH_SEN_FILE_DIR "/" SWITCH_SEN_CONF_FILE_NAME
 #define SWITCH_SEN_DATA_FILE_PATH SWITCH_SEN_FILE_DIR "/" SWITCH_SEN_DATA_FILE_NAME
 
+#define SWITCH_COMMAND_SET_STATE  "set_state\0"
+#define SWITCH_COMMAND_SET_PWM    "set_pwm\0"
+
+typedef enum {
+  SWITCH_TYPE_ACTUATOR=0,
+  SWITCH_TYPE_ACTUATOR_PWM,
+  SWITCH_TYPE_STATE,
+  SWITCH_TYPE_COUNTER
+} switch_type_t;
+
 /**
  * Sensor configuration
  */
@@ -46,6 +56,7 @@ typedef struct {
   uint32_t min_period_us;           //debounce period
   gpio_num_t gpio;
   uint32_t ver;                     //configuration version
+  switch_type_t sw_type;
 } switch_sen_conf_t;
 
 /**
@@ -64,6 +75,10 @@ typedef struct {
 typedef struct {
     switch_sen_conf_t conf; //Sensor configuration
     switch_sen_inf_t info;  //Sensor information
+    float pwm;
+    sen_out_state_t state;
+    uint32_t trig_duration, trig_cnt;
+    uint64_t esp_timestamp;
     void (*calc_processed)(void *sen);
     sensor_t sen;
 } switch_sen_t;
@@ -74,7 +89,7 @@ typedef struct {
  * @param dev Device descriptor
  * @return `ESP_OK` on success
  */
-esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir, uint32_t min_period_us, gpio_num_t input_pin, gpio_pullup_t pull_up_en,gpio_pulldown_t pull_down_en, uint8_t dev_id, uint8_t pack_id, uint8_t sen_id, char sen_name[], void *calc_processed);
+esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir, uint32_t min_period_us, uint32_t period_ms, gpio_num_t io_pin, gpio_pullup_t pull_up_en,gpio_pulldown_t pull_down_en, uint8_t dev_id, uint8_t pack_id, uint8_t sen_id, char sen_name[], switch_type_t sw_type, void *calc_processed);
 
 /**
  * @brief Free device descriptor
@@ -86,7 +101,9 @@ esp_err_t switch_sen_free(switch_sen_t *dev);
 
 esp_err_t switch_sen_get_measurement_duration(switch_sen_t *dev, uint32_t *duration);
 
-esp_err_t switch_sen_get_val(switch_sen_t *dev);
+esp_err_t switch_sen_set_state(switch_sen_t *dev, sen_out_state_t state);
+
+esp_err_t switch_sen_set_pwm(switch_sen_t *dev, float pwm);
 
 #ifdef __cplusplus
 }

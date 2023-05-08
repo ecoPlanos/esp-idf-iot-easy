@@ -355,6 +355,7 @@ esp_err_t analog_sen_get_att(analog_sen_t *dev, analog_sen_att_t *att) {
 
 // IoT Dev specific functions
 esp_err_t analog_sen_iot_sen_start_measurement(void *dev) {
+  ESP_LOGD(TAG,"IOT start measurement");
   return analog_sen_test_att((analog_sen_t*) dev);
 }
 
@@ -380,20 +381,22 @@ esp_err_t analog_sen_iot_sen_get_data(void *dev) {
 
 esp_err_t analog_sen_iot_sen_sleep_mode_awake(void *dev) {
   // analog_sen_t* dev_ = (analog_sen_t*) dev;
-
+  ESP_LOGD(TAG,"IOT awake");
   return ESP_OK;
 }
 
 esp_err_t analog_sen_iot_sen_sleep_mode_sleep(void *dev) {
   // analog_sen_t* dev_ = (analog_sen_t*) dev;
-
+  ESP_LOGD(TAG,"IOT sleep");
   return ESP_OK;
 }
 
 esp_err_t analog_sen_iot_sen_reset(void *dev) {
+  ESP_LOGD(TAG,"IOT reset");
   return ESP_OK;
 }
 
 esp_err_t analog_sen_iot_sen_reinit(void *dev) {
+  ESP_LOGD(TAG,"IOT reinit");
   return ESP_OK;
 }
