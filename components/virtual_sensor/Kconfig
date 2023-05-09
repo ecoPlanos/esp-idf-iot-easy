@@ -14,7 +14,7 @@ config VIRTUAL_SENSOR_USE_CONF_STORAGE
 
 config VIRTUAL_SENSOR_DEFAULT_PERIOD_MS
     int "Sensor default period (ms)"
-    default 10000
+    default 600000
     range 0 4294967295
     help
         Default data acquisition period in milliseconds.
