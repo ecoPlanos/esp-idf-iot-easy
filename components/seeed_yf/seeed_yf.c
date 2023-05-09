@@ -31,15 +31,20 @@ static const char *TAG = "seeed_YF";
 
 static void yf_calc_water_flow(void *yf_sen){
   switch_sen_t *yf_sen_ = (switch_sen_t *)yf_sen;
-  ESP_LOGD(TAG, "trigger_cnt: %u times", yf_sen_->trig_cnt);
-  ESP_LOGD(TAG, "tirg_duration: %u us", yf_sen_->trig_duration);
+  uint32_t dur, cnt;
+  dur = yf_sen_->trig_duration;
+  cnt = yf_sen_->trig_cnt;
+  yf_sen_->trig_duration-=dur; 
+  yf_sen_->trig_cnt-=cnt;
+  ESP_LOGD(TAG, "trigger_cnt: %u times", cnt);
+  ESP_LOGD(TAG, "tirg_duration: %u us", dur);
   ESP_LOGD(TAG, "using factor: %f", YF_FACTOR[(yf_model_t)yf_sen_->info.model]);
-  if((yf_sen_->trig_cnt == 0) || (yf_sen_->trig_duration == 0)) {
+  if((cnt == 0) || (dur == 0)) {
     yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = 0.0;
     return;
   }
-  yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = ((((float)yf_sen_->trig_cnt)/2.0)/\
-                                            (((float)yf_sen_->trig_duration)/1000000.0))/\
+  yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = ((((float)cnt)/2.0)/\
+                                            (((float)dur)/1000000.0))/\
                                             YF_FACTOR[(yf_model_t)yf_sen_->info.model];
   ESP_LOGD(TAG, "L/m: %f", yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow);
 }

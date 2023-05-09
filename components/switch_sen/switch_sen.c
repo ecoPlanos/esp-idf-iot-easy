@@ -158,8 +158,6 @@ static esp_err_t switch_iot_sen_get_data(void *dev) {
       if(switch_dev->calc_processed != NULL) {
         ESP_LOGD(TAG, "post processing data...");
         switch_dev->calc_processed(switch_dev);
-        switch_dev->trig_cnt=0;
-        switch_dev->trig_duration=0;
         return ESP_OK;
       } else {
         switch_dev->sen.outs[0].trig_cnt = switch_dev->trig_cnt;
