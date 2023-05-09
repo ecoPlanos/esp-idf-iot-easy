@@ -56,15 +56,13 @@ static void sw_trigger_task(void* arg) {
       if(io_num==dev->sen.outs[0].gpio){
         current_timestamp = esp_timer_get_time();
         if(detect_running){
-          if(dev->conf.sw_type == SWITCH_TYPE_STATE) {
-            dev->state = SEN_OUT_STATE_OFF;
-            dev->trig_duration += (uint32_t)(current_timestamp - trig_on);
-            dev->trig_cnt += 1;
-            dev->esp_timestamp = current_timestamp;
-            dev->sen.esp_timestamp = current_timestamp;
-            trig_off = current_timestamp;
-            ESP_LOGD(TAG, "end of detection with cntr: %u and duration: %u us",dev->trig_cnt,dev->trig_duration);
-          }
+          dev->state = SEN_OUT_STATE_OFF;
+          dev->trig_duration += (uint32_t)(current_timestamp - trig_on);
+          dev->trig_cnt += 1;
+          dev->esp_timestamp = current_timestamp;
+          dev->sen.esp_timestamp = current_timestamp;
+          trig_off = current_timestamp;
+          ESP_LOGD(TAG, "end of detection with cntr: %u and duration: %u us",dev->trig_cnt,dev->trig_duration);
         } else {
           ESP_LOGD(TAG, "started new detection");
           if(dev->conf.sw_type == SWITCH_TYPE_STATE) {
@@ -84,10 +82,12 @@ static void sw_trigger_task(void* arg) {
             }
           } else {
             // if((current_timestamp - current_trig) < dev->sen.conf.min_period_us)
-            dev->trig_duration += (uint32_t)(current_timestamp - trig_off);
+            if(trig_off > 0) {
+              dev->trig_duration += (uint32_t)(current_timestamp - trig_off);
+              dev->esp_timestamp = current_timestamp;
+              dev->sen.esp_timestamp = current_timestamp;
+            }
             dev->trig_cnt += 1;
-            dev->esp_timestamp = current_timestamp;
-            dev->sen.esp_timestamp = current_timestamp;
             trig_on = current_timestamp;
             detect_running = true;
           }
