@@ -49,7 +49,7 @@ static void sw_trigger_task(void* arg) {
   // sensor_t *sen = (sensor_t *)arg;
   switch_sen_t *dev = (switch_sen_t *)arg;
   bool detect_running = false;
-  int64_t current_timestamp, current_trig = 0;
+  int64_t current_timestamp, trig_on = 0, trig_off = 0;
   uint8_t io_num;
   for(;;) {
     if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
@@ -58,14 +58,11 @@ static void sw_trigger_task(void* arg) {
         if(detect_running){
           if(dev->conf.sw_type == SWITCH_TYPE_STATE) {
             dev->state = SEN_OUT_STATE_OFF;
-            dev->esp_timestamp = current_timestamp;
-            detect_running = false;
-          } else {
-            detect_running = false;
-            dev->trig_duration += (uint32_t)(current_timestamp - current_trig);
+            dev->trig_duration += (uint32_t)(current_timestamp - trig_on);
             dev->trig_cnt += 1;
             dev->esp_timestamp = current_timestamp;
             dev->sen.esp_timestamp = current_timestamp;
+            trig_off = current_timestamp;
             ESP_LOGD(TAG, "end of detection with cntr: %u and duration: %u us",dev->trig_cnt,dev->trig_duration);
           }
         } else {
@@ -74,21 +71,24 @@ static void sw_trigger_task(void* arg) {
             if(((dev->sen.outs[0].out_trigger_dir==SEN_OUT_TRIGGER_RE) && gpio_get_level(dev->conf.gpio)) || \
                 ((dev->sen.outs[0].out_trigger_dir==SEN_OUT_TRIGGER_FE) && (!gpio_get_level(dev->conf.gpio)))) {
               ESP_LOGD(TAG, "detected level change!");
-              current_trig = current_timestamp;
               dev->state = SEN_OUT_STATE_ON;
-              dev->esp_timestamp = current_trig;
-              dev->sen.esp_timestamp = current_trig;
+              dev->esp_timestamp = current_timestamp;
+              dev->sen.esp_timestamp = current_timestamp;
+              trig_on = current_timestamp;
               detect_running = true;
             } else {
               ESP_LOGD(TAG, "detected oposite transition");
+              dev->state = SEN_OUT_STATE_OFF;
+              dev->esp_timestamp = current_timestamp;
+              trig_off = current_timestamp;
             }
           } else {
             // if((current_timestamp - current_trig) < dev->sen.conf.min_period_us)
-            dev->trig_duration += (uint32_t)(current_timestamp - current_trig);
+            dev->trig_duration += (uint32_t)(current_timestamp - trig_off);
             dev->trig_cnt += 1;
-            current_trig = current_timestamp;
-            dev->esp_timestamp = current_trig;
-            dev->sen.esp_timestamp = current_trig;
+            dev->esp_timestamp = current_timestamp;
+            dev->sen.esp_timestamp = current_timestamp;
+            trig_on = current_timestamp;
             detect_running = true;
           }
         }
