@@ -73,20 +73,23 @@ static void sw_trigger_task(void* arg) {
           if(dev->conf.sw_type == SWITCH_TYPE_STATE) {
             if(((dev->sen.outs[0].out_trigger_dir==SEN_OUT_TRIGGER_RE) && gpio_get_level(dev->conf.gpio)) || \
                 ((dev->sen.outs[0].out_trigger_dir==SEN_OUT_TRIGGER_FE) && (!gpio_get_level(dev->conf.gpio)))) {
-              detect_running = true;
+              ESP_LOGD(TAG, "detected level change!");
               current_trig = current_timestamp;
               dev->state = SEN_OUT_STATE_ON;
               dev->esp_timestamp = current_trig;
               dev->sen.esp_timestamp = current_trig;
-              ESP_LOGD(TAG, "detected level change!");
+              detect_running = true;
             } else {
               ESP_LOGD(TAG, "detected oposite transition");
             }
           } else {
-            if((current_timestamp - current_trig) < dev->sen.conf.min_period_us)
-              dev->trig_duration += (uint32_t)(current_timestamp - dev->esp_timestamp);
-            detect_running = true;
+            // if((current_timestamp - current_trig) < dev->sen.conf.min_period_us)
+            dev->trig_duration += (uint32_t)(current_timestamp - current_trig);
+            dev->trig_cnt += 1;
             current_trig = current_timestamp;
+            dev->esp_timestamp = current_trig;
+            dev->sen.esp_timestamp = current_trig;
+            detect_running = true;
           }
         }
       }

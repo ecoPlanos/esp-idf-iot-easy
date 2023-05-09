@@ -38,7 +38,7 @@ static void yf_calc_water_flow(void *yf_sen){
     yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = 0.0;
     return;
   }
-  yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = (((float)yf_sen_->trig_cnt)/\
+  yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = ((((float)yf_sen_->trig_cnt)/2.0)/\
                                             (((float)yf_sen_->trig_duration)/1000000.0))/\
                                             YF_FACTOR[(yf_model_t)yf_sen_->info.model];
   ESP_LOGD(TAG, "L/m: %f", yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow);
