@@ -32,7 +32,7 @@ extern "C" {
 #define YF_OUT_FLOW_ID 0
 
 typedef enum {
-  YF_MODEL_B1 = 1,
+  YF_MODEL_B1 = 0,
   YF_MODEL_B2,
   YF_MODEL_B3,
   YF_MODEL_B4,

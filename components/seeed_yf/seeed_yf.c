@@ -21,7 +21,7 @@
 #include <string.h>
 #include "seeed_yf.h"
 
-static const float YF_FACTOR[7] = {11.0, 11.0, 11.0, 11.0, 6.6, 6.6, 11.0};
+static const float YF_FACTOR[7] = {11.0, 11.0, 6.6, 11.0, 6.6, 6.6, 11.0};
 
 static const char *TAG = "seeed_YF";
 
@@ -30,23 +30,29 @@ static const char *TAG = "seeed_YF";
 #define SLEEP_MS(x) do { vTaskDelay(pdMS_TO_TICKS(x)); } while (0)
 
 static void yf_calc_water_flow(void *yf_sen){
-  switch_sen_t *yf_sen_ = (switch_sen_t *)yf_sen;
+  switch_sen_t *dev = (switch_sen_t *)yf_sen;
   uint32_t dur, cnt;
-  dur = yf_sen_->trig_duration;
-  cnt = yf_sen_->trig_cnt;
-  yf_sen_->trig_duration-=dur; 
-  yf_sen_->trig_cnt-=cnt;
-  ESP_LOGD(TAG, "trigger_cnt: %u times", cnt);
-  ESP_LOGD(TAG, "tirg_duration: %u us", dur);
-  ESP_LOGD(TAG, "using factor: %f", YF_FACTOR[(yf_model_t)yf_sen_->info.model]);
+  float freq;
+  dur = dev->trig_duration;
+  cnt = dev->trig_cnt;
+  freq = dev->frequency;
+  // freq=(((float)cnt-1.0)/2.0)/(((float)dur)/1000000.0); //TODO why is it to low??!?!
+  
+  dev->trig_duration-=dur; 
+  dev->trig_cnt-=cnt;
+  ESP_LOGD(TAG,"trigger_cnt: %u times", cnt);
+  ESP_LOGD(TAG,"tirg_duration: %u us", dur);
+  ESP_LOGD(TAG,"frequency: %f Hz", dev->frequency);
+  ESP_LOGD(TAG,"frequency_avg: %f Hz", freq);
+  ESP_LOGD(TAG,"on_dur: %u", dev->on_dur);
+  ESP_LOGD(TAG,"off_dur: %u", dev->off_dur);
+  ESP_LOGD(TAG,"factor: %f",YF_FACTOR[(yf_model_t)dev->info.model]);
   if((cnt == 0) || (dur == 0)) {
-    yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = 0.0;
+    dev->sen.outs[YF_OUT_FLOW_ID].flow = 0.0;
     return;
   }
-  yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow = ((((float)cnt)/2.0)/\
-                                            (((float)dur)/1000000.0))/\
-                                            YF_FACTOR[(yf_model_t)yf_sen_->info.model];
-  ESP_LOGD(TAG, "L/m: %f", yf_sen_->sen.outs[YF_OUT_FLOW_ID].flow);
+  dev->sen.outs[YF_OUT_FLOW_ID].flow = freq/YF_FACTOR[(yf_model_t)dev->info.model];
+  ESP_LOGI(TAG, "L/m: %f", dev->sen.outs[YF_OUT_FLOW_ID].flow);
 }
 
 esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t min_period_us, uint32_t period_ms, uint16_t sen_id, gpio_num_t water_flow_gpio, char *sen_name, yf_model_t yf_model){

@@ -78,6 +78,8 @@ typedef struct {
     float pwm;
     sen_out_state_t state;
     uint32_t trig_duration, trig_cnt;
+    uint32_t on_dur, off_dur;
+    float frequency;
     uint64_t esp_timestamp;
     void (*calc_processed)(void *sen);
     sensor_t sen;

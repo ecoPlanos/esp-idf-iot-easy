@@ -49,47 +49,72 @@ static void sw_trigger_task(void* arg) {
   // sensor_t *sen = (sensor_t *)arg;
   switch_sen_t *dev = (switch_sen_t *)arg;
   bool detect_running = false;
-  int64_t current_timestamp, trig_on = 0, trig_off = 0;
+  int64_t current_timestamp, trig_on = 0, trig_off = 0, detect_start=0;
   uint8_t io_num;
   for(;;) {
     if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
       if(io_num==dev->sen.outs[0].gpio){
         current_timestamp = esp_timer_get_time();
+        dev->trig_cnt ++;
         if(detect_running){
-          dev->state = SEN_OUT_STATE_OFF;
-          dev->trig_duration += (uint32_t)(current_timestamp - trig_on);
-          dev->trig_cnt += 1;
-          dev->esp_timestamp = current_timestamp;
-          dev->sen.esp_timestamp = current_timestamp;
           trig_off = current_timestamp;
-          ESP_LOGD(TAG, "end of detection with cntr: %u and duration: %u us",dev->trig_cnt,dev->trig_duration);
-        } else {
-          ESP_LOGD(TAG, "started new detection");
+          dev->on_dur=(uint32_t)(current_timestamp - trig_on);
+          if(dev->conf.sw_type == SWITCH_TYPE_STATE) {
+            dev->state = SEN_OUT_STATE_OFF;
+          } else {  // Other switch types
+            if(dev->on_dur < dev->sen.conf.min_period_us) {
+              dev->trig_duration += dev->on_dur;
+              if(dev->trig_cnt>2) {
+                dev->frequency = (1000000.0/((float)((float)dev->on_dur+(float)dev->off_dur)));
+                ESP_LOGD(TAG, "total duration: %u us, total trigers: %u, frequency: %f",dev->trig_duration,dev->trig_cnt,dev->frequency);
+              }
+            } else {
+              detect_start = current_timestamp;
+              ESP_LOGE(TAG, "Detected end of measurement!");
+              dev->trig_duration = 0;
+              dev->frequency = 0.0;
+              dev->trig_cnt = 1;
+            }
+          }
+          dev->sen.esp_timestamp = current_timestamp;
+          detect_running = false;
+          ESP_LOGD(TAG,"on_dur: %u", dev->on_dur);
+        } else {  // !detect_running
+          dev->off_dur=(uint32_t)(current_timestamp - trig_off);
           if(dev->conf.sw_type == SWITCH_TYPE_STATE) {
             if(((dev->sen.outs[0].out_trigger_dir==SEN_OUT_TRIGGER_RE) && gpio_get_level(dev->conf.gpio)) || \
-                ((dev->sen.outs[0].out_trigger_dir==SEN_OUT_TRIGGER_FE) && (!gpio_get_level(dev->conf.gpio)))) {
-              ESP_LOGD(TAG, "detected level change!");
-              dev->state = SEN_OUT_STATE_ON;
-              dev->esp_timestamp = current_timestamp;
-              dev->sen.esp_timestamp = current_timestamp;
+               ((dev->sen.outs[0].out_trigger_dir==SEN_OUT_TRIGGER_FE) && (!gpio_get_level(dev->conf.gpio)))) {
               trig_on = current_timestamp;
+              dev->state = SEN_OUT_STATE_ON;
+              dev->sen.esp_timestamp = current_timestamp;
               detect_running = true;
             } else {
               ESP_LOGD(TAG, "detected oposite transition");
-              dev->state = SEN_OUT_STATE_OFF;
-              dev->esp_timestamp = current_timestamp;
-              trig_off = current_timestamp;
+              if(dev->state != SEN_OUT_STATE_OFF) {
+                trig_off = current_timestamp;
+                dev->state = SEN_OUT_STATE_OFF;
+                dev->sen.esp_timestamp = current_timestamp;
+              }
             }
-          } else {
-            // if((current_timestamp - current_trig) < dev->sen.conf.min_period_us)
-            if(trig_off > 0) {
-              dev->trig_duration += (uint32_t)(current_timestamp - trig_off);
-              dev->esp_timestamp = current_timestamp;
-              dev->sen.esp_timestamp = current_timestamp;
-            }
-            dev->trig_cnt += 1;
+          } else {  // Other switch types
             trig_on = current_timestamp;
+            if(dev->off_dur < dev->sen.conf.min_period_us) {
+              dev->trig_duration += dev->off_dur;
+              if(dev->trig_cnt>2) {
+                dev->frequency = (1000000.0/((float)((float)dev->on_dur+(float)dev->off_dur)));
+                dev->sen.esp_timestamp = current_timestamp;
+                ESP_LOGD(TAG, "total duration: %u us, total trigers: %u, frequency: %f",dev->trig_duration,dev->trig_cnt,dev->frequency);
+              }
+            } else {
+              detect_start = current_timestamp;
+              ESP_LOGE(TAG, "Detected end of measurement!");
+              dev->trig_duration = 0;
+              dev->frequency = 0.0;
+              dev->trig_cnt = 1;
+            }
             detect_running = true;
+            dev->sen.esp_timestamp = current_timestamp;
+            ESP_LOGD(TAG,"off_dur: %u", dev->off_dur);
           }
         }
       }
@@ -238,6 +263,9 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->state = 0;
   dev->trig_duration = 0;
   dev->trig_cnt = 0;
+  dev->on_dur = UINT32_MAX;
+  dev->off_dur = UINT32_MAX;
+  dev->frequency = 0.0;
   dev->esp_timestamp = 0;
   dev->calc_processed = calc_processed;
   dev->conf.gpio = io_pin;
