@@ -323,7 +323,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.info.version = 1;
     dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.info.out_nr = 2; //channel 0 (Full spectrum),channel 1 (IR) and a virtual channel 2 (Visible spectrum)
-    dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+    dev->sen.conf.trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
 
     dev->sen.conf.min_period_us = 120000;
     dev->sen.conf.addr = TSL2591_I2C_ADDR;

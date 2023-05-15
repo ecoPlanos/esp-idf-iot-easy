@@ -285,7 +285,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.conf.min_period_us = min_period_us;
   dev->sen.conf.delay_start_get_us = 0;
   dev->sen.info.out_nr = 1;
-  dev->sen.info.sen_trigger_type = ((period_ms > 0) ? SEN_OUT_TRIGGER_TYPE_TIME : SEN_OUT_TRIGGER_TYPE_EVENT);
+  dev->sen.conf.trigger_type = ((period_ms > 0) ? SEN_OUT_TRIGGER_TYPE_TIME : SEN_OUT_TRIGGER_TYPE_EVENT);
   dev->sen.conf.addr = 0;
   dev->sen.conf.period_ms=period_ms;
   dev->sen.reset=switch_iot_sen_reset;

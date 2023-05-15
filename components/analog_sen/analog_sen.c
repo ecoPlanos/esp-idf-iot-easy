@@ -197,7 +197,7 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, \
     dev->sen.conf.delay_after_awake_us = 10000;
     dev->sen.conf.time_to_adjust_us = 10000*(ANALOG_SEN_ATTS_NR+1);
     dev->sen.info.out_nr = outs_nr;
-    dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+    dev->sen.conf.trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.esp_timestamp=0;
     dev->sen.dev=dev;
     dev->sen.reset=analog_sen_iot_sen_reset;

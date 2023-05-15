@@ -153,7 +153,7 @@ esp_err_t k30_init_desc(k30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_n
     dev->sen.info.version = 1;
     dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.info.out_nr = OUTPUT_NR; //CO2, Temperature, RH
-    dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+    dev->sen.conf.trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
 
     dev->sen.conf.min_period_us = 10000000;
     dev->sen.conf.addr = K30_I2C_ADDR;

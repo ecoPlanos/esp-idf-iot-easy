@@ -597,7 +597,7 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.info.out_nr = 4; //temperature, pressure, RH, gas
   // dev->sen.info.out_nr = 18; //temperature, pressure, RH, gas + BSEC processed outputs
   // dev->sen.info.out_nr = 8; //temperature, pressure, RH, gas + BSEC processed outputs
-  dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+  dev->sen.conf.trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
   dev->sen.conf.addr = BME680_I2C_ADDR_0;
   dev->sen.conf.period_ms=CONFIG_BME680_DEFAULT_PERIOD_MS;
   dev->sen.dev=dev;

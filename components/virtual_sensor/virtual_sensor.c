@@ -67,7 +67,7 @@ esp_err_t virtual_sensor_init_desc(virtual_sensor_t *dev, uint16_t sen_id) {
     dev->sen.conf.min_period_us = 1000000;
     dev->sen.conf.delay_start_get_us = 42000;
     dev->sen.info.out_nr = 4;
-    dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+    dev->sen.conf.trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.period_ms = CONFIG_VIRTUAL_SENSOR_DEFAULT_PERIOD_MS;
     dev->sen.conf.delay_after_awake_us=100000;
     dev->sen.conf.time_to_adjust_us=0;

@@ -383,7 +383,7 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->sen.info.com_type = SEN_COM_TYPE_DIGITAL_COM;
     dev->sen.conf.min_period_us = 30000000;
     dev->sen.info.out_nr = 12;
-    dev->sen.info.sen_trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+    dev->sen.conf.trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
     dev->sen.conf.period_ms=CONFIG_PMS1003_DEFAULT_PERIOD_MS;
     dev->sen.dev=dev;
     dev->sen.reset=pms1003_iot_sen_reset;
