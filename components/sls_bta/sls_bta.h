@@ -40,7 +40,7 @@ enum {
  * @param sls_bta_sen Analog sensor descriptor
  * @return `ESP_OK` on success
  */
-esp_err_t sls_bta_init(analog_sen_t *sls_bta_sen, uint8_t samples_filter, uint32_t period_ms, uint16_t sen_id, adc_unit_t sound_unit, adc_channel_t sound_channel, adc_unit_t ref_unit, adc_channel_t ref_channel, char *sen_name);
+esp_err_t sls_bta_init(analog_sen_t *sls_bta_sen, uint16_t sen_id, adc_unit_t sound_unit, adc_channel_t sound_channel, adc_unit_t ref_unit, adc_channel_t ref_channel, char *sen_name);
 
 /**
 * @brief Free device descriptor

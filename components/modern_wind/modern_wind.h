@@ -61,7 +61,7 @@ typedef struct {
  * @param modern_wind_sen Analog sensor descriptor
  * @return `ESP_OK` on success
  */
-esp_err_t modern_wind_init(modern_wind_t *modern_wind_sen, uint8_t samples_filter, uint32_t period_ms, uint16_t sen_id, adc_unit_t wind_unit, adc_channel_t wind_channel, adc_unit_t tmp_unit, adc_channel_t tmp_channel, gpio_num_t shdn_gpio, char *sen_name);
+esp_err_t modern_wind_init(modern_wind_t *modern_wind_sen, uint16_t sen_id, adc_unit_t wind_unit, adc_channel_t wind_channel, adc_unit_t tmp_unit, adc_channel_t tmp_channel, gpio_num_t shdn_gpio, char *sen_name);
 
 /**
 * @brief Free device descriptor

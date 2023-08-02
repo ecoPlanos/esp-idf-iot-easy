@@ -1,18 +1,25 @@
 menu "Wind sensor"
 
-config MODERN_WIND_SEN_DEFAULT_ATT
+config MODERN_WIND_DEFAULT_ATT
     int "Default ADC attenuation"
     default 0
     range 0 3
     help
         Initial attenuation value. 0 - 0dB, 1 - 2.5dB, 2 - 6dB, 3 - 11dB.
 
-config MODERN_WIND_SEN_DEFAULT_PERIOD_MS
+config MODERN_WIND_DEFAULT_PERIOD_MS
     int "Sensor default period (ms)"
     default 30000
     range 0 4294967295
     help
         Default data acquisition period in milliseconds.
+
+config MODERN_WIND_DEFAULT_SAMP_FILTER
+    int "Sensor default sample filter"
+    default 1
+    range 0 2000
+    help
+        Default data filtering in sample number.
 
 config MODERN_WIND_USE_HW_CTRL
     bool "Sensor default period (ms)"

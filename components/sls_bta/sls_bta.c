@@ -56,12 +56,14 @@ static const char *TAG = "SLS_BTA";
 //   return ESP_OK;
 // }
 
-esp_err_t sls_bta_init(analog_sen_t *sls_bta_sen, uint8_t samples_filter, uint32_t period_ms, uint16_t sen_id, adc_unit_t sound_unit, adc_channel_t sound_channel, adc_unit_t ref_unit, adc_channel_t ref_channel, char *sen_name){
+esp_err_t sls_bta_init(analog_sen_t *sls_bta_sen, uint16_t sen_id, adc_unit_t sound_unit, adc_channel_t sound_channel, adc_unit_t ref_unit, adc_channel_t ref_channel, char *sen_name){
   CHECK_ARG(sls_bta_sen);
-  CHECK(analog_sen_init_desc(sls_bta_sen, samples_filter, period_ms, sen_id, sen_name, 2, sls_bta_calc_sound_pressure));
+  CHECK(analog_sen_init_desc(sls_bta_sen, sen_id, sen_name, 2, sls_bta_calc_sound_pressure));
   CHECK(analog_sen_config_output(sls_bta_sen, SLS_BTA_OUT_SOUND_ID, sound_unit, sound_channel, NULL));
   CHECK(analog_sen_config_output(sls_bta_sen, SLS_BTA_OUT_REF_ID, ref_unit, ref_channel, NULL));
 
+  sls_bta_sen->sen.conf.period_ms = CONFIG_SLS_BTA_DEFAULT_PERIOD_MS;
+  sls_bta_sen->sen.conf.samples_filter = CONFIG_SLS_BTA_DEFAULT_SAMP_FILTER;
   sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].out_type = SEN_TYPE_SOUND_PRESSURE;
   sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].sound_pressure=0.0;
   sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].out_type = SEN_TYPE_VOLTAGE;

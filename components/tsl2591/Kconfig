@@ -19,4 +19,11 @@ config TSL2591_DEFAULT_PERIOD_MS
     help
         Default data acquisition period in milliseconds.
 
+config TSL2591_DEFAULT_SAMP_FILTER
+    int "Sensor default sample filter"
+    default 1
+    range 0 2000
+    help
+        Default data filtering in sample number.
+
 endmenu

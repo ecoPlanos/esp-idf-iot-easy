@@ -55,7 +55,7 @@ static void yf_calc_water_flow(void *yf_sen){
   ESP_LOGI(TAG, "L/m: %f", dev->sen.outs[YF_OUT_FLOW_ID].flow);
 }
 
-esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t min_period_us, uint32_t period_ms, uint16_t sen_id, gpio_num_t water_flow_gpio, char *sen_name, yf_model_t yf_model){
+esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t min_period_us, uint16_t sen_id, gpio_num_t water_flow_gpio, char *sen_name, yf_model_t yf_model){
   CHECK_ARG(yf_sen);
   CHECK(switch_sen_init(yf_sen, SEN_OUT_TRIGGER_RE, min_period_us, 0, water_flow_gpio, GPIO_PULLUP_DISABLE, GPIO_PULLDOWN_ENABLE, 0, 0, sen_id, sen_name, SWITCH_TYPE_COUNTER, yf_calc_water_flow));
   // yf_sen->sen.conf.period_ms = period_ms;

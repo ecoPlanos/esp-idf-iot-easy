@@ -59,8 +59,6 @@ extern "C" {
 #define PMS1003_RAW_DATA_SIZE 28
 #define PMS1003_TOTAL_DATA_SIZE 32
 
-#define PMS1003_BAUD_RATE_DEFAULT 9600  // Default serial setup: 9600bps Check bit：None Stop bit：1 bit
-
 typedef enum {
   PMS1003_OUT_PM1_0_CON_UNIT_ID = 0,      //DATA1
   PMS1003_OUT_PM2_5_CON_UNIT_ID,          //DATA2
@@ -164,7 +162,7 @@ typedef struct {
  * @param rx_gpio   RX GPIO
  * @return          ESP_OK` on success
  */
-esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio, gpio_num_t rx_gpio, gpio_num_t rts_io_num, gpio_num_t cts_io_num, int tx_buffer_size, int rx_buffer_size, int queue_size, int intr_alloc_flags, int baud_rate, uart_word_length_t data_bits, uart_parity_t parity, uart_stop_bits_t stop_bits, uart_hw_flowcontrol_t flow_ctrl, uint8_t rx_flow_ctrl_thresh, uart_sclk_t source_clk, gpio_num_t rst_pin, gpio_num_t set_pin, uint16_t sen_id);
+esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio, gpio_num_t rx_gpio, gpio_num_t rts_io_num, gpio_num_t cts_io_num, int tx_buffer_size, int rx_buffer_size, int queue_size, int intr_alloc_flags, uart_hw_flowcontrol_t flow_ctrl, uint8_t rx_flow_ctrl_thresh, uart_sclk_t source_clk, gpio_num_t rst_pin, gpio_num_t set_pin, uint16_t sen_id);
 
 /**
  * @brief Free device descriptor

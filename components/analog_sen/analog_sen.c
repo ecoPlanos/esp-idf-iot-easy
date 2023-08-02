@@ -174,7 +174,6 @@ static inline esp_err_t analog_sen_outs_init(analog_sen_t *dev) {
 
 // Initialization.
 esp_err_t analog_sen_init_desc( analog_sen_t *dev, \
-                                uint8_t samples_filter, uint32_t period_ms, \
                                 uint16_t sen_id, char sen_name[], \
                                 uint8_t outs_nr, void *calc_processed) {
     uint8_t i;
@@ -189,10 +188,10 @@ esp_err_t analog_sen_init_desc( analog_sen_t *dev, \
     dev->sen.info.sen_id = sen_id;
     dev->sen.info.version = 1;
     dev->sen.info.com_type = SEN_COM_TYPE_ANALOG;
-    dev->sen.conf.samples_filter = samples_filter;
+    dev->sen.conf.samples_filter = CONFIG_ANALOG_DEFAULT_SAMP_FILTER;
     // dev->sen.conf.period_ms=nearest_prime(CONFIG_ANALOG_DEFAULT_PERIOD_MS);
-    dev->sen.conf.period_ms=period_ms;
-    dev->sen.conf.min_period_us = samples_filter*5000;
+    dev->sen.conf.period_ms=CONFIG_ANALOG_DEFAULT_PERIOD_MS;
+    dev->sen.conf.min_period_us = CONFIG_ANALOG_DEFAULT_SAMP_FILTER*5000;
     dev->sen.conf.delay_start_get_us = 10000;
     dev->sen.conf.delay_after_awake_us = 10000;
     dev->sen.conf.time_to_adjust_us = 10000*(ANALOG_SEN_ATTS_NR+1);

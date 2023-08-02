@@ -39,7 +39,7 @@ enum {
  * @param amph_ge_17xx_sen Analog sensor descriptor
  * @return `ESP_OK` on success
  */
-esp_err_t amph_ge_17xx_init(analog_sen_t *amph_ge_17xx_sen, uint8_t samples_filter, uint32_t period_ms, uint16_t sen_id, adc_unit_t adc_unit, adc_channel_t adc_channel, char *sen_name);
+esp_err_t amph_ge_17xx_init(analog_sen_t *amph_ge_sen, adc_unit_t adc_unit, adc_channel_t adc_channel, uint16_t sen_id, char *sen_name);
 
 esp_err_t amph_ge_17xx_config_output(analog_sen_t *amph_ge_17xx_sen, uint8_t oud_idx, adc_unit_t unit, adc_channel_t analog_channel);
 

@@ -342,8 +342,7 @@ static inline void print_raw_values(pms1003_t *dev) {
 esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio, \
                             gpio_num_t rx_gpio, gpio_num_t rts_io_num, gpio_num_t cts_io_num, \
                             int tx_buffer_size, int rx_buffer_size, int queue_size, \
-                            int intr_alloc_flags, int baud_rate, uart_word_length_t data_bits, \
-                            uart_parity_t parity, uart_stop_bits_t stop_bits, \
+                            int intr_alloc_flags, \
                             uart_hw_flowcontrol_t flow_ctrl, uint8_t rx_flow_ctrl_thresh, \
                             uart_sclk_t source_clk, gpio_num_t rst_pin, gpio_num_t set_pin, uint16_t sen_id) {
     CHECK_ARG(dev);
@@ -363,10 +362,11 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
     dev->uart_dev.queue_size = queue_size;
     dev->uart_dev.queue = NULL;
     dev->uart_dev.intr_alloc_flags = intr_alloc_flags;
-    dev->uart_dev.cfg.baud_rate = baud_rate;
-    dev->uart_dev.cfg.data_bits = data_bits;
-    dev->uart_dev.cfg.parity = parity;
-    dev->uart_dev.cfg.stop_bits = stop_bits;
+    dev->uart_dev.cfg.baud_rate = 9600;
+
+    dev->uart_dev.cfg.data_bits = UART_DATA_8_BITS;
+    dev->uart_dev.cfg.parity = UART_PARITY_DISABLE;
+    dev->uart_dev.cfg.stop_bits = UART_STOP_BITS_1;
     dev->uart_dev.cfg.flow_ctrl = flow_ctrl;
     dev->uart_dev.cfg.source_clk = source_clk;
 

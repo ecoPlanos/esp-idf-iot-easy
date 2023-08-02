@@ -13,6 +13,13 @@ config PMS1003_DEFAULT_PERIOD_MS
     help
         Default data acquisition period in milliseconds.
 
+config PMS1003_DEFAULT_SAMP_FILTER
+    int "Sensor default sample filter"
+    default 1
+    range 0 2000
+    help
+        Default data filtering in sample number.
+
 config PMS1003_USE_HW_CTRL
     bool "Use hardware controll signals"
     default false

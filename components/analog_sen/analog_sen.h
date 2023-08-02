@@ -96,7 +96,6 @@ typedef struct
  * @return `ESP_OK` on success
  */
 esp_err_t analog_sen_init_desc( analog_sen_t *dev, \
-                                uint8_t samples_filter, uint32_t period_ms, \
                                 uint16_t sen_id, char sen_name[], \
                                 uint8_t outs_nr, \
                                 void *calc_processed_func);
