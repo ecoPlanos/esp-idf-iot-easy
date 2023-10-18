@@ -83,28 +83,24 @@ esp_err_t virtual_sensor_init_desc(virtual_sensor_t *dev, uint16_t sen_id) {
     dev->sen.status.fail_time = 0;
 
     dev->sen.outs[VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID].out_id=VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID;
-    dev->sen.outs[VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID].out_type = SEN_TYPE_TIME;
     dev->sen.outs[VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
     dev->sen.outs[VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID].m_raw=0;
-    dev->sen.outs[VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID].time=0.0;
+    dev->sen.outs[VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID].processed=0.0;
 
     dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].out_id=VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID;
-    dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].out_type = SEN_TYPE_TIME;
     dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
     dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].m_raw=0;
-    dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].time=0.0;
+    dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].processed=0.0;
 
     dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].out_id=VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID;
-    dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].out_type = SEN_TYPE_TIME;
     dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
     dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].m_raw=0;
-    dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].time=0.0;
+    dev->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].processed=0.0;
 
     dev->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].out_id=VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID;
-    dev->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].out_type = SEN_TYPE_COUNTER;
     dev->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
     dev->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].m_raw=0;
-    dev->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].trig_cnt=0.0;
+    dev->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].processed=0.0;
     dev->sen.conf.srate=0;
 
     return ESP_OK;
@@ -165,10 +161,10 @@ esp_err_t virtual_sensor_iot_sen_get_data(void *dev) {
   dev_->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].m_raw = dev_->meas_start_time;
   dev_->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].m_raw = dev_->meas_get_time;
   dev_->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].m_raw = dev_->reset_count;
-  dev_->sen.outs[VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID].time = dev_->meas_awake_time;
-  dev_->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].time = dev_->meas_start_time;
-  dev_->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].time = dev_->meas_get_time;
-  dev_->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].time = dev_->reset_count;
+  dev_->sen.outs[VIRTUAL_SENSOR_OUT_AWAKE_TIME_ID].processed = dev_->meas_awake_time;
+  dev_->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_START_TIME_ID].processed = dev_->meas_start_time;
+  dev_->sen.outs[VIRTUAL_SENSOR_OUT_MEAS_GET_TIME_ID].processed = dev_->meas_get_time;
+  dev_->sen.outs[VIRTUAL_SENSOR_OUT_RESET_COUNTER_ID].processed = dev_->reset_count;
   return ESP_OK;
 }
 

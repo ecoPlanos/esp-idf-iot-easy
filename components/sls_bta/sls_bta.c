@@ -29,7 +29,7 @@ static const char *TAG = "SLS_BTA";
 
 // static void sls_bta_calc_sound(sensor_t *sen) {
 //
-//   // ESP_LOGD(TAG, "sen->outs[0].sound_pressure: %f",sen->outs[0].sound_pressure);
+//   // ESP_LOGD(TAG, "sen->outs[0].processed: %f",sen->outs[0].processed);
 //   // ESP_LOGD(TAG, "K0: %f",K0);
 //   // ESP_LOGD(TAG, "K1: %f",K1);
 //   // ESP_LOGD(TAG, "K2: %f",K2);
@@ -64,21 +64,18 @@ esp_err_t sls_bta_init(analog_sen_t *sls_bta_sen, uint16_t sen_id, adc_unit_t so
 
   sls_bta_sen->sen.conf.period_ms = CONFIG_SLS_BTA_DEFAULT_PERIOD_MS;
   sls_bta_sen->sen.conf.samples_filter = CONFIG_SLS_BTA_DEFAULT_SAMP_FILTER;
-  sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].out_type = SEN_TYPE_SOUND_PRESSURE;
-  sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].sound_pressure=0.0;
-  sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].out_type = SEN_TYPE_VOLTAGE;
-  sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].voltage=0.0;
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].processed=0.0;
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].processed=0.0;
   CHECK(analog_sen_init(sls_bta_sen));
 
   return ESP_OK;
 }
 
-esp_err_t sls_bta_calc_sound_pressure(void *sls_bta_sen){
-  analog_sen_t *sls_bta_sen_ = (analog_sen_t *)sls_bta_sen;
-  ESP_LOGD(TAG, "sound voltage: %f mv", sls_bta_sen_->sen.outs[SLS_BTA_OUT_SOUND_ID].voltage);
-  ESP_LOGD(TAG, "ref voltage: %f mv", sls_bta_sen_->sen.outs[SLS_BTA_OUT_REF_ID].voltage);
-  sls_bta_sen_->sen.outs[SLS_BTA_OUT_SOUND_ID].sound_pressure = K0+K1*(sls_bta_sen_->sen.outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752) +
-                                K2*(sls_bta_sen_->sen.outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752)*(sls_bta_sen_->sen.outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752);
-  sls_bta_sen_->sen.outs[SLS_BTA_OUT_REF_ID].voltage = sls_bta_sen_->sen.outs[SLS_BTA_OUT_REF_ID].voltage/655.963302752;
+esp_err_t sls_bta_calc_sound_pressure(analog_sen_t *sls_bta_sen){
+  ESP_LOGD(TAG, "sound voltage: %u mv", sls_bta_sen->outs[SLS_BTA_OUT_SOUND_ID].voltage);
+  ESP_LOGD(TAG, "ref voltage: %u mv", sls_bta_sen->outs[SLS_BTA_OUT_REF_ID].voltage);
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].processed = K0+K1*((float)sls_bta_sen->outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752) +
+                                K2*((float)sls_bta_sen->outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752)*(sls_bta_sen->outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752);
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].processed = (float)sls_bta_sen->outs[SLS_BTA_OUT_REF_ID].voltage;
   return ESP_OK;
 }

@@ -192,24 +192,21 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
   dev->sen.status.fail_time = 0;
 
   dev->sen.outs[SFA30_OUT_HCHO_ID].out_id=SFA30_OUT_HCHO_ID;
-  dev->sen.outs[SFA30_OUT_HCHO_ID].out_type = SEN_TYPE_HCHO;
   dev->sen.outs[SFA30_OUT_HCHO_ID].out_val_type=SEN_OUT_VAL_TYPE_INT16;
   dev->sen.outs[SFA30_OUT_HCHO_ID].m_raw=0;
-  dev->sen.outs[SFA30_OUT_HCHO_ID].hcho=0.0;
+  dev->sen.outs[SFA30_OUT_HCHO_ID].processed=0.0;
   // dev->sen.outs[SFA30_OUT_HCHO_ID].conf.srate=0;
 
   dev->sen.outs[SFA30_OUT_RH_ID].out_id=SFA30_OUT_RH_ID;
-  dev->sen.outs[SFA30_OUT_RH_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
   dev->sen.outs[SFA30_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_INT16;
   dev->sen.outs[SFA30_OUT_RH_ID].m_raw=0;
-  dev->sen.outs[SFA30_OUT_RH_ID].relative_humidity=0.0;
+  dev->sen.outs[SFA30_OUT_RH_ID].processed=0.0;
   // dev->sen.outs[SFA30_OUT_RH_ID].conf.srate=0;
 
   dev->sen.outs[SFA30_OUT_TEMP_ID].out_id=SFA30_OUT_TEMP_ID;
-  dev->sen.outs[SFA30_OUT_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
   dev->sen.outs[SFA30_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_INT16;
   dev->sen.outs[SFA30_OUT_TEMP_ID].m_raw=0;
-  dev->sen.outs[SFA30_OUT_TEMP_ID].temperature=0.0;
+  dev->sen.outs[SFA30_OUT_TEMP_ID].processed=0.0;
   // dev->sen.outs[SFA30_OUT_TEMP_ID].conf.srate=0;
   dev->sen.conf.srate=0;
 
@@ -280,17 +277,17 @@ esp_err_t sfa30_measure(sfa30_t *dev, float *hcho, float *humidity, float *tempe
   dev->sen.outs[SFA30_OUT_HCHO_ID].m_raw = (raw[0]<<8) | raw[1];
   dev->sen.outs[SFA30_OUT_RH_ID].m_raw = (raw[3]<<8) | raw[4];
   dev->sen.outs[SFA30_OUT_TEMP_ID].m_raw = (raw[6]<<8) | raw[7];
-  dev->sen.outs[SFA30_OUT_HCHO_ID].hcho = *hcho;
-  dev->sen.outs[SFA30_OUT_RH_ID].relative_humidity = *humidity;
-  dev->sen.outs[SFA30_OUT_TEMP_ID].temperature = *temperature;
+  dev->sen.outs[SFA30_OUT_HCHO_ID].processed = *hcho;
+  dev->sen.outs[SFA30_OUT_RH_ID].processed = *humidity;
+  dev->sen.outs[SFA30_OUT_TEMP_ID].processed = *temperature;
   CHECK(sfa30_compute_values(dev, raw, hcho, humidity, temperature));
   dev->sen.esp_timestamp = esp_timer_get_time();
   ESP_LOGD(TAG, "HCHO raw: %d",dev->sen.outs[SFA30_OUT_HCHO_ID].m_raw);
   ESP_LOGD(TAG, "RH raw: %d",dev->sen.outs[SFA30_OUT_RH_ID].m_raw);
   ESP_LOGD(TAG, "Temp raw: %d",dev->sen.outs[SFA30_OUT_TEMP_ID].m_raw);
-  ESP_LOGD(TAG, "HCHO: %f",dev->sen.outs[SFA30_OUT_HCHO_ID].hcho);
-  ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SFA30_OUT_RH_ID].relative_humidity);
-  ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SFA30_OUT_TEMP_ID].temperature);
+  ESP_LOGD(TAG, "HCHO: %f",dev->sen.outs[SFA30_OUT_HCHO_ID].processed);
+  ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SFA30_OUT_RH_ID].processed);
+  ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SFA30_OUT_TEMP_ID].processed);
   return ESP_OK;
 }
 
@@ -373,12 +370,12 @@ esp_err_t sfa30_compute_values(sfa30_t *dev, sfa30_raw_data_t raw_data, float *h
     if (temperature)
       *temperature = (((float)((int16_t)((raw_data[6] << 8) | raw_data[7])))/200.0);
 
-    dev->sen.outs[SFA30_OUT_HCHO_ID].relative_humidity=*hcho;
-    dev->sen.outs[SFA30_OUT_RH_ID].relative_humidity=*humidity;
-    dev->sen.outs[SFA30_OUT_TEMP_ID].temperature=*temperature;
-    ESP_LOGD(TAG, "HCHO: %f",dev->sen.outs[SFA30_OUT_HCHO_ID].hcho);
-    ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SFA30_OUT_RH_ID].relative_humidity);
-    ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SFA30_OUT_TEMP_ID].temperature);
+    dev->sen.outs[SFA30_OUT_HCHO_ID].processed=*hcho;
+    dev->sen.outs[SFA30_OUT_RH_ID].processed=*humidity;
+    dev->sen.outs[SFA30_OUT_TEMP_ID].processed=*temperature;
+    ESP_LOGD(TAG, "HCHO: %f",dev->sen.outs[SFA30_OUT_HCHO_ID].processed);
+    ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SFA30_OUT_RH_ID].processed);
+    ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SFA30_OUT_TEMP_ID].processed);
 
     return ESP_OK;
 }

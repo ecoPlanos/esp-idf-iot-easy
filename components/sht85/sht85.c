@@ -240,17 +240,15 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
     dev->sen.status.fail_time = 0;
 
     dev->sen.outs[SHT85_OUT_TEMP_ID].out_id=SHT85_OUT_TEMP_ID;
-    dev->sen.outs[SHT85_OUT_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
     dev->sen.outs[SHT85_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw=0;
-    dev->sen.outs[SHT85_OUT_TEMP_ID].temperature=0.0;
+    dev->sen.outs[SHT85_OUT_TEMP_ID].processed=0.0;
     // dev->sen.outs[SHT85_OUT_TEMP_ID].conf.srate=0;
 
     dev->sen.outs[SHT85_OUT_RH_ID].out_id=SHT85_OUT_RH_ID;
-    dev->sen.outs[SHT85_OUT_RH_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
     dev->sen.outs[SHT85_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[SHT85_OUT_RH_ID].m_raw=0;
-    dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity=0.0;
+    dev->sen.outs[SHT85_OUT_RH_ID].processed=0.0;
     // dev->sen.outs[SHT85_OUT_RH_ID].conf.srate=0;
     dev->sen.conf.srate=0;
 
@@ -318,12 +316,12 @@ esp_err_t sht85_measure(sht85_t *dev, float *temperature, float *humidity) {
   dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw = (raw[0]<<8) | raw[1];
   dev->sen.outs[SHT85_OUT_RH_ID].m_raw = (raw[3]<<8) | raw[4];
   CHECK(sht85_compute_values(dev, raw, temperature, humidity));
-  dev->sen.outs[SHT85_OUT_TEMP_ID].temperature = *temperature;
-  dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity = *humidity;
+  dev->sen.outs[SHT85_OUT_TEMP_ID].processed = *temperature;
+  dev->sen.outs[SHT85_OUT_RH_ID].processed = *humidity;
   ESP_LOGD(TAG, "Temp raw: %u",dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw);
   ESP_LOGD(TAG, "RH raw: %u",dev->sen.outs[SHT85_OUT_RH_ID].m_raw);
-  ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SHT85_OUT_TEMP_ID].temperature);
-  ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity);
+  ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SHT85_OUT_TEMP_ID].processed);
+  ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SHT85_OUT_RH_ID].processed);
   return ESP_OK;
 }
 
@@ -392,10 +390,10 @@ esp_err_t sht85_compute_values(sht85_t *dev, sht85_raw_data_t raw_data, float *t
         *humidity = 100.0*(((float)((uint16_t)((raw_data[3] << 8) | raw_data[4])))/ 65535.0);
         // *humidity = ((uint16_t)((raw_data[3] << 8) | raw_data[4])) * 125.0 / 65535.0 - 6.0;
 
-    dev->sen.outs[SHT85_OUT_TEMP_ID].temperature=*temperature;
-    dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity=*humidity;
-    ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SHT85_OUT_TEMP_ID].temperature);
-    ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SHT85_OUT_RH_ID].relative_humidity);
+    dev->sen.outs[SHT85_OUT_TEMP_ID].processed=*temperature;
+    dev->sen.outs[SHT85_OUT_RH_ID].processed=*humidity;
+    ESP_LOGD(TAG, "Temp: %f",dev->sen.outs[SHT85_OUT_TEMP_ID].processed);
+    ESP_LOGD(TAG, "RH: %f",dev->sen.outs[SHT85_OUT_RH_ID].processed);
 
     return ESP_OK;
 }
@@ -434,13 +432,13 @@ esp_err_t sht85_iot_sen_get_data(void *dev) {
 
   dev_->sen.outs[SHT85_OUT_TEMP_ID].m_raw = (raw[0]<<8) | raw[1];
   dev_->sen.outs[SHT85_OUT_RH_ID].m_raw = (raw[3]<<8) | raw[4];
-  // dev_->sen.outs[SHT85_OUT_TEMP_ID].temperature = *temperature;
-  // dev_->sen.outs[SHT85_OUT_RH_ID].relative_humidity = *humidity;
+  // dev_->sen.outs[SHT85_OUT_TEMP_ID].processed = *temperature;
+  // dev_->sen.outs[SHT85_OUT_RH_ID].processed = *humidity;
   CHECK(sht85_compute_values(dev_, raw, &temperature, &humidity));
   ESP_LOGD(TAG, "Temp raw: %u",dev_->sen.outs[SHT85_OUT_TEMP_ID].m_raw);
   ESP_LOGD(TAG, "RH raw: %u",dev_->sen.outs[SHT85_OUT_RH_ID].m_raw);
-  ESP_LOGD(TAG, "Temp: %f",dev_->sen.outs[SHT85_OUT_TEMP_ID].temperature);
-  ESP_LOGD(TAG, "RH: %f",dev_->sen.outs[SHT85_OUT_RH_ID].relative_humidity);
+  ESP_LOGD(TAG, "Temp: %f",dev_->sen.outs[SHT85_OUT_TEMP_ID].processed);
+  ESP_LOGD(TAG, "RH: %f",dev_->sen.outs[SHT85_OUT_RH_ID].processed);
   // return sht85_measure((sht85_t *)dev, &temperature, &humidity);
   // return sht85_get_results((sht85_t*) dev, &temperature, &humidity);
   return ESP_OK;

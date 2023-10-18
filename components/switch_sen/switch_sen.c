@@ -174,10 +174,10 @@ static esp_err_t switch_iot_sen_get_data(void *dev) {
   switch(switch_dev->conf.sw_type) {
     case SWITCH_TYPE_ACTUATOR:
     case SWITCH_TYPE_STATE:
-      switch_dev->sen.outs[0].state = switch_dev->state;
+      switch_dev->sen.outs[0].processed = switch_dev->state;
     break;
     case SWITCH_TYPE_ACTUATOR_PWM:
-      switch_dev->sen.outs[0].pwm = switch_dev->pwm;
+      switch_dev->sen.outs[0].processed = switch_dev->pwm;
     break;
     case SWITCH_TYPE_COUNTER:
       if(switch_dev->calc_processed != NULL) {
@@ -185,7 +185,7 @@ static esp_err_t switch_iot_sen_get_data(void *dev) {
         switch_dev->calc_processed(switch_dev);
         return ESP_OK;
       } else {
-        switch_dev->sen.outs[0].trig_cnt = switch_dev->trig_cnt;
+        switch_dev->sen.outs[0].processed = switch_dev->trig_cnt;
       // switch_dev->sen.outs[1].duration = switch_dev->trig_duration;
       }
     break;
@@ -303,7 +303,7 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.outs[0].out_id=0;
   dev->sen.outs[0].gpio = io_pin;
   dev->sen.outs[0].out_trigger_dir = trigger_dir;
-  dev->sen.outs[0].out_val_type=SEN_OUT_VAL_TYPE_SEN_SWITCH;
+  dev->sen.outs[0].out_val_type=SEN_OUT_VAL_TYPE_BOOL;
   dev->sen.outs[0].m_raw=0;
   dev->sen.conf.srate=0;
 
@@ -311,14 +311,11 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   io_conf.intr_type = GPIO_INTR_ANYEDGE;
   io_conf.pin_bit_mask = (1ULL<<io_pin);
   if(switch_type==SWITCH_TYPE_ACTUATOR_PWM) {
-    dev->sen.outs[0].out_type=SEN_TYPE_SWITCH_ACTUATOR_PWM;
     io_conf.mode = GPIO_MODE_OUTPUT;
   } else if(switch_type==SWITCH_TYPE_ACTUATOR) {
-    dev->sen.outs[0].out_type=SEN_TYPE_SWITCH;
     io_conf.mode = GPIO_MODE_INPUT_OUTPUT;
   } else {
     io_conf.mode = GPIO_MODE_INPUT;
-    dev->sen.outs[0].out_type=SEN_TYPE_SWITCH;
   }
   io_conf.pull_up_en = pull_up_en;
   io_conf.pull_down_en = pull_down_en;
@@ -363,7 +360,7 @@ esp_err_t switch_sen_set_state(switch_sen_t *dev, sen_out_state_t state) {
   dev->esp_timestamp = esp_timer_get_time();
   dev->sen.esp_timestamp = dev->esp_timestamp;
   return ESP_OK;
-  // dev->sen.outs[0].state = state;  TODO: maybe state is only changed when gpio_get_level
+  // dev->sen.outs[0].processed = state;  TODO: maybe state is only changed when gpio_get_level
 }
 // esp_err_t switch_sen_iot_sen_measurement(void *dev) {
 //   //TODO: get latest sensor data

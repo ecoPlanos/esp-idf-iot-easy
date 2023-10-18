@@ -1,0 +1,36 @@
+menu "VICTRON_BMV60X"
+config BMV60X_DEFAULT_PERIOD_MS
+    int "Sensor default period (ms)"
+    default 1000
+    range 0 4294967295
+    help
+        Default data acquisition period in milliseconds.
+
+config BMV60X_DEFAULT_SAMP_FILTER
+    int "Sensor default sample filter"
+    default 1
+    range 0 2000
+    help
+        Default data filtering in sample number.
+
+config BMV60X_MAX_MODEL_DESC
+    int "Maximum device description characters"
+    default 6
+    range 0 20
+
+config BMV60X_MESSAGE_TIMEOUT
+    int "Message wait timeout"
+    default 100
+    range 1 65000
+    help
+        Time to wait for the end of a message (baud units)
+
+config BMV60X_ACTIVE_MODE
+    bool "Data received with interrupts"
+    default true
+
+config BMV60X_ACTIVE_MODE_QUEUE
+    int "UART queue size"
+    default 0
+    range 0 511
+endmenu

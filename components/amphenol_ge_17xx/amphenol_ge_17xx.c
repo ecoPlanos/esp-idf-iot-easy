@@ -32,8 +32,7 @@ esp_err_t amph_ge_17xx_init(analog_sen_t *amph_ge_sen, adc_unit_t adc_unit, adc_
   CHECK(analog_sen_init_desc(amph_ge_sen, sen_id, sen_name, 1, amph_ge_17xx_calc_temperature));
   CHECK(analog_sen_config_output(amph_ge_sen, AMPH_GE_17XX_OUT_TEMPERATURE_ID, adc_unit, adc_channel, NULL));
 
-  amph_ge_sen->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].out_type = SEN_TYPE_INTERNAL_TEMPERATURE;
-  amph_ge_sen->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].temperature=0.0;
+  amph_ge_sen->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].processed=0.0;
   amph_ge_sen->sen.conf.period_ms = CONFIG_AMPH_GE17XX_DEFAULT_PERIOD_MS;
   amph_ge_sen->sen.conf.samples_filter = CONFIG_AMPH_GE17XX_DEFAULT_SAMP_FILTER;
   CHECK(analog_sen_init(amph_ge_sen));
@@ -44,7 +43,7 @@ esp_err_t amph_ge_17xx_init(analog_sen_t *amph_ge_sen, adc_unit_t adc_unit, adc_
 esp_err_t amph_ge_17xx_calc_temperature(void *amph_ge_sen){
   analog_sen_t *amph_ge_sen_ = (analog_sen_t *)amph_ge_sen;
   // Using f(x) = -0.35825*x^0 + 37.9166*x^1 (good for R2=1K5 and heating systems with start temperature over 25ºC)
-  ESP_LOGD(TAG, "temperature voltage: %f mv", amph_ge_sen_->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].voltage);
-  amph_ge_sen_->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].temperature = (amph_ge_sen_->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].voltage*0.0379166)-0.35825;
+  ESP_LOGD(TAG, "temperature voltage: %f mv", amph_ge_sen_->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].processed);
+  amph_ge_sen_->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].processed = (amph_ge_sen_->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].processed*0.0379166)-0.35825;
   return ESP_OK;
 }

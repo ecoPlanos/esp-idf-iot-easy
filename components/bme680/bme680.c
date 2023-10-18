@@ -371,7 +371,7 @@ static int16_t bme680_convert_temperature(bme680_t *dev, uint32_t raw_temperatur
             * ((int32_t) cd->par_t3)) >> 14;
     cd->t_fine = (int32_t) (var1 + var2);
     temperature = (cd->t_fine * 5 + 128) >> 8;
-    dev->sen.outs[BME680_OUT_TEMP_ID].temperature = temperature / 100.0f;
+    dev->sen.outs[BME680_OUT_TEMP_ID].processed = temperature / 100.0f;
     return temperature;
 }
 
@@ -420,7 +420,7 @@ static uint32_t bme680_convert_pressure(bme680_t *dev, uint32_t raw_pressure) {
 
     pressure_comp = (int32_t)(pressure_comp) + ((var1 + var2 + var3 +
                     ((int32_t)cd->par_p7 << 7)) >> 4);
-    dev->sen.outs[BME680_OUT_PRESSURE_ID].pressure = ((uint32_t)pressure_comp) / 100.0f;
+    dev->sen.outs[BME680_OUT_PRESSURE_ID].processed = ((uint32_t)pressure_comp) / 100.0f;
     return (uint32_t)pressure_comp;
 }
 
@@ -464,7 +464,7 @@ static uint32_t bme680_convert_humidity(bme680_t *dev, uint16_t raw_humidity) {
         humidity = 100000;
     else if (humidity < 0)
         humidity = 0;
-    dev->sen.outs[BME680_OUT_RH_ID].relative_humidity = ((uint32_t)humidity) / 1000.0f;
+    dev->sen.outs[BME680_OUT_RH_ID].processed = ((uint32_t)humidity) / 1000.0f;
     return (uint32_t) humidity;
 }
 
@@ -500,7 +500,7 @@ static uint32_t bme680_convert_gas(bme680_t *dev, uint16_t gas, uint8_t gas_rang
     bme680_calib_data_t *cd = &dev->calib_data;
 
     float var1 = (1340.0 + 5.0 * cd->range_sw_err) * lookup_table[gas_range][0];
-    dev->sen.outs[BME680_OUT_GAS_ID].resistance = (float)(var1 * lookup_table[gas_range][1] / (gas - 512.0 + var1));
+    dev->sen.outs[BME680_OUT_GAS_ID].processed = (float)(var1 * lookup_table[gas_range][1] / (gas - 512.0 + var1));
     return var1 * lookup_table[gas_range][1] / (gas - 512.0 + var1);
 }
 
@@ -612,122 +612,103 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
   dev->sen.status.fail_time = 0;
 
   dev->sen.outs[BME680_OUT_TEMP_ID].out_id=BME680_OUT_TEMP_ID;
-  dev->sen.outs[BME680_OUT_TEMP_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
   dev->sen.outs[BME680_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
   dev->sen.outs[BME680_OUT_TEMP_ID].m_raw=0;
-  dev->sen.outs[BME680_OUT_TEMP_ID].temperature=0.0;
+  dev->sen.outs[BME680_OUT_TEMP_ID].processed=0.0;
   // dev->sen.outs[BME680_OUT_TEMP_ID].conf.srate=0;
 
   dev->sen.outs[BME680_OUT_PRESSURE_ID].out_id=BME680_OUT_PRESSURE_ID;
-  dev->sen.outs[BME680_OUT_PRESSURE_ID].out_type=SEN_TYPE_PRESSURE;
   dev->sen.outs[BME680_OUT_PRESSURE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
   dev->sen.outs[BME680_OUT_PRESSURE_ID].m_raw=0;
-  dev->sen.outs[BME680_OUT_PRESSURE_ID].pressure=0.0;
+  dev->sen.outs[BME680_OUT_PRESSURE_ID].processed=0.0;
   // dev->sen.outs[BME680_OUT_PRESSURE_ID].conf.srate=0;
 
   dev->sen.outs[BME680_OUT_RH_ID].out_id=BME680_OUT_RH_ID;
-  dev->sen.outs[BME680_OUT_RH_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
   dev->sen.outs[BME680_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
   dev->sen.outs[BME680_OUT_RH_ID].m_raw=0;
-  dev->sen.outs[BME680_OUT_RH_ID].relative_humidity=0.0;
+  dev->sen.outs[BME680_OUT_RH_ID].processed=0.0;
   // dev->sen.outs[BME680_OUT_RH_ID].conf.srate=0;
 
   dev->sen.outs[BME680_OUT_GAS_ID].out_id=BME680_OUT_GAS_ID;
-  dev->sen.outs[BME680_OUT_GAS_ID].out_type=SEN_TYPE_GAS_RESISTANCE;
   dev->sen.outs[BME680_OUT_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
   dev->sen.outs[BME680_OUT_GAS_ID].m_raw=0;
-  dev->sen.outs[BME680_OUT_GAS_ID].resistance=0.0;
+  dev->sen.outs[BME680_OUT_GAS_ID].processed=0.0;
   // dev->sen.outs[BME680_OUT_GAS_ID].conf.srate=0;
 #ifdef CONFIG_BME680_USE_ALGOBSE_LIB
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_id=BME680_BSEC_OUT_IAQ_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_type=SEN_TYPE_GAS;
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].out_id=BME680_BSEC_OUT_STATIC_IAQ_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].out_type=SEN_TYPE_GAS;
   // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].out_id=BME680_BSEC_OUT_CO2_EQUIVALENT_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].out_type=SEN_TYPE_CO2;
   // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].out_id=BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].out_type=SEN_TYPE_VOC;
   // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].out_id=BME680_BSEC_OUT_RAW_TEMPERATURE_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
   // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].out_id=BME680_BSEC_OUT_RAW_PRESSURE_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].out_type=SEN_TYPE_PRESSURE;
   // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].out_id=BME680_BSEC_OUT_RAW_HUMIDITY_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
   // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].out_id=BME680_BSEC_OUT_RAW_GAS_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].out_type=SEN_TYPE_GAS;
   // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].out_id=BME680_BSEC_OUT_RAW_GAS_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].out_type=SEN_TYPE_STATUS;
   // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].out_id=BME680_BSEC_OUT_RAW_GAS_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].out_type=SEN_TYPE_STATUS;
   // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].out_id=BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
   // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].out_id=BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
   // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].out_id=BME680_BSEC_OUT_COMPENSATED_GAS_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].out_type=SEN_TYPE_GAS;
   // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].out_id=BME680_BSEC_OUT_GAS_PERCENTAGE_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].out_type=SEN_TYPE_GAS;
   // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].processed=0.0;
   //
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_id=BME680_BSEC_OUT_IAQ_ID;
-  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_type=SEN_TYPE_GAS;
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].out_val_type=SEN_OUT_VAL_TYPE_FLOAT;
   // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].m_raw=0;
-  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].resistance=0.0;
+  // dev->sen.outs[BME680_BSEC_OUT_IAQ_ID].processed=0.0;
 
   // dev->sen.conf.srate=0;
   // if(bsec_init() != BSEC_OK){
@@ -1245,46 +1226,46 @@ esp_err_t bme680_iot_sen_get_data(void *dev) {
   //       case BSEC_OUTPUT_IAQ:
   //         // Retrieve the IAQ results from output[i].signal
   //         // and do something with the data
-  //         dev_->sen.outs[BME680_BSEC_OUT_IAQ_ID].gas=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_IAQ_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_STATIC_IAQ:
-  //         dev_->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].gas=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_STATIC_IAQ_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_CO2_EQUIVALENT:
-  //         dev_->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].co2=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_CO2_EQUIVALENT_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
-  //         dev_->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].voc=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_BREATH_VOC_EQUIVALENT_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_RAW_TEMPERATURE:
-  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].temperature=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_TEMPERATURE_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_RAW_PRESSURE:
-  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].pressure=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_PRESSURE_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_RAW_HUMIDITY:
-  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].relative_humidity=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_HUMIDITY_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_RAW_GAS:
-  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].gas=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_RAW_GAS_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_STABILIZATION_STATUS:
-  //         dev_->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].status=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_STABILIZATION_STATUS_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_RUN_IN_STATUS:
-  //         dev_->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].status=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_RUN_IN_STATUS_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE:
-  //         dev_->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].temperature=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY:
-  //         dev_->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].relative_humidity=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_SENSOR_HEAT_COMPENSATED_HUMIDITY_ID].processed=outputs[i].signal;
   //       break;
   //       case BSEC_OUTPUT_COMPENSATED_GAS:
-  //         dev_->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].gas=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_COMPENSATED_GAS_ID].processed=outputs[i].signal;
   //       break;
   //         case BSEC_OUTPUT_GAS_PERCENTAGE:
-  //         dev_->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].gas=outputs[i].signal;
+  //         dev_->sen.outs[BME680_BSEC_OUT_GAS_PERCENTAGE_ID].processed=outputs[i].signal;
   //       break;
   //     }
   //   }

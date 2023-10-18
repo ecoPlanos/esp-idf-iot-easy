@@ -324,7 +324,7 @@ esp_err_t analog_sen_get_voltage(analog_sen_t *dev, uint16_t adc_reading, uint8_
     CHECK_ARG(dev);
     //TODO: check voltage dividers
     *voltage = esp_adc_cal_raw_to_voltage(adc_reading, &dev->outs[out_idx].adc_chars[dev->sen.outs[out_idx].atts_agc.idx]);
-    dev->sen.outs[out_idx].voltage=(float)*voltage;
+    dev->sen.outs[out_idx].m_raw=*voltage;
     dev->outs[out_idx].voltage=*voltage;
     ESP_LOGD(TAG, "Voltage out[%u]: %u mV",out_idx,*voltage);
     return ESP_OK;

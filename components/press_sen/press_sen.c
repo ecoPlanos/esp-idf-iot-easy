@@ -27,15 +27,13 @@ static const char *TAG = "PRESS_SEN";
 #define CHECK_ARG(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 #define SLEEP_MS(x) do { vTaskDelay(pdMS_TO_TICKS(x)); } while (0)
 
-static esp_err_t press_sen_calc_pressure(void *press_sen_sen){
-  analog_sen_t *press_sen_sen_ = (analog_sen_t *)press_sen_sen;
-  ESP_LOGD(TAG, "press voltage: %f mv", press_sen_sen_->sen.outs[PRESS_SEN_PRESSURE_ID].voltage);
-  press_sen_sen_->sen.outs[PRESS_SEN_PRESSURE_ID].pressure = press_sen_sen_->outs[PRESS_SEN_PRESSURE_ID].voltage; //TODO: DO!!!!
+static esp_err_t press_sen_calc_pressure(analog_sen_t *press_sen_sen){
+  ESP_LOGD(TAG, "press voltage: %u mv", press_sen_sen->outs[PRESS_SEN_PRESSURE_ID].voltage);
+  press_sen_sen->sen.outs[PRESS_SEN_PRESSURE_ID].processed = press_sen_sen->outs[PRESS_SEN_PRESSURE_ID].voltage; //TODO: DO!!!!
   return ESP_OK;
 }
 
-static esp_err_t press_sen_calc_temperature(void *press_sen_sen){
-  analog_sen_t *press_sen_sen_ = (analog_sen_t *)press_sen_sen;
+static esp_err_t press_sen_calc_temperature(analog_sen_t *press_sen_sen){
 
   return ESP_OK;
 }
@@ -45,8 +43,7 @@ esp_err_t press_sen_init(analog_sen_t *press_sen_sen, uint8_t samples_filter, ui
   CHECK(analog_sen_init_desc(press_sen_sen, sen_id, sen_name, 1, press_sen_calc_pressure));
   CHECK(analog_sen_config_output(press_sen_sen, PRESS_SEN_PRESSURE_ID, press_unit, press_channel, NULL));
 
-  press_sen_sen->sen.outs[PRESS_SEN_PRESSURE_ID].out_type = SEN_TYPE_PRESSURE;
-  press_sen_sen->sen.outs[PRESS_SEN_PRESSURE_ID].pressure=0.0;
+  press_sen_sen->sen.outs[PRESS_SEN_PRESSURE_ID].processed=0.0;
   press_sen_sen->sen.conf.samples_filter=CONFIG_PRESS_SEN_DEFAULT_SAMP_FILTER;
   press_sen_sen->sen.conf.period_ms=CONFIG_PRESS_SEN_DEFAULT_PERIOD_MS;
   CHECK(analog_sen_init(press_sen_sen));

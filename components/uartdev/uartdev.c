@@ -173,7 +173,6 @@ inline static bool cfg_equal(const uart_config_t *a, const uart_config_t *b) {
 
 static esp_err_t uart_setup_port(const uart_dev_t *dev) {
   if (dev->port >= UART_NUM_MAX) return ESP_ERR_INVALID_ARG;
-
   esp_err_t res;
   if (!cfg_equal(&dev->cfg, &states[dev->port].config)) {
     ESP_LOGD(TAG, "Reconfiguring UART driver on port %d", dev->port);
@@ -189,33 +188,33 @@ static esp_err_t uart_setup_port(const uart_dev_t *dev) {
     CHECK(uart_driver_install(dev->port, dev->rx_buffer_size, dev->tx_buffer_size, dev->queue_size, &dev->queue, dev->intr_alloc_flags));
 
     states[dev->port].installed = true;
-
     memcpy(&states[dev->port].config, &temp, sizeof(uart_config_t));
     ESP_LOGD(TAG, "UART driver successfully reconfigured on port %d", dev->port);
   }
   return ESP_OK;
 }
 
-esp_err_t uart_dev_read(const uart_dev_t *dev, const void *out_data, size_t out_size, void *in_data, size_t in_size) {
-  if (!dev || !in_data || !in_size) return ESP_ERR_INVALID_ARG;
+esp_err_t uart_dev_read(const uart_dev_t *dev, const void *out_data, size_t out_size, uint32_t timeout) {
+  if (!dev || !out_data || !out_size) return ESP_ERR_INVALID_ARG;
 
   SEMAPHORE_TAKE(dev->port);
   CHECK(uart_setup_port(dev));
-  int read_len = uart_read_bytes(dev->port, in_data, in_size, 800 / portTICK_PERIOD_MS);
-  if(read_len < in_size) return ESP_FAIL;
+  int read_len = uart_read_bytes(dev->port, out_data, out_size, pdMS_TO_TICKS(timeout));
   SEMAPHORE_GIVE(dev->port);
+  if(read_len < out_size) return ESP_ERR_INVALID_STATE;
 
   return ESP_OK;
 }
 
-int uart_dev_write(const uart_dev_t *dev, const uint8_t* data) {
+esp_err_t uart_dev_write(const uart_dev_t *dev, const uint8_t* data, size_t data_size) {
   if (!dev) return ESP_ERR_INVALID_ARG;
   const int len = strlen((char*)data);
   SEMAPHORE_TAKE(dev->port);
   const int txBytes = uart_write_bytes(dev->port, data, len);
   SEMAPHORE_GIVE(dev->port);
   ESP_LOGD(TAG, "Wrote %d bytes", txBytes);
-  return txBytes;
+  if(data_size!=txBytes) return ESP_FAIL;
+  return ESP_OK;
 }
 
 void rx_task(void *arg) {
@@ -224,7 +223,7 @@ void rx_task(void *arg) {
   // esp_log_level_set(TAG, ESP_LOG_INFO);
   uint8_t* data = (uint8_t*) malloc(dev->rx_buffer_size+1);
   while (1) {
-    const int rxBytes = uart_read_bytes(dev->port, data, dev->rx_buffer_size, dev->delay_ms / portTICK_RATE_MS);
+    const int rxBytes = uart_read_bytes(dev->port, data, dev->rx_buffer_size, pdMS_TO_TICKS(dev->delay_ms));
     if (rxBytes > 0) {
       data[rxBytes] = 0;
       ESP_LOGI(TAG, "Read %d bytes: '%s'", rxBytes, data);

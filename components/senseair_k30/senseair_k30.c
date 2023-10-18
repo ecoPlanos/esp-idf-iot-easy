@@ -176,25 +176,22 @@ esp_err_t k30_init_desc(k30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_n
     dev->sen.status.fail_time = 0;
 
     dev->sen.outs[K30_OUT_CO2_ID].out_id=K30_OUT_CO2_ID;
-    dev->sen.outs[K30_OUT_CO2_ID].out_type = SEN_TYPE_CO2;
     dev->sen.outs[K30_OUT_CO2_ID].out_val_type = SEN_OUT_VAL_TYPE_INT16;
     dev->sen.outs[K30_OUT_CO2_ID].bit_nr=16;
     dev->sen.outs[K30_OUT_CO2_ID].m_raw=0;
-    dev->sen.outs[K30_OUT_CO2_ID].co2=0.0;
+    dev->sen.outs[K30_OUT_CO2_ID].processed=0.0;
 
     // dev->sen.outs[K30_OUT_TEMP_ID].out_id=K30_OUT_TEMP_ID;
-    // dev->sen.outs[K30_OUT_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
     // dev->sen.outs[K30_OUT_TEMP_ID].out_val_type = SEN_OUT_VAL_TYPE_INT16;
     // dev->sen.outs[K30_OUT_TEMP_ID].bit_nr=16;
     // dev->sen.outs[K30_OUT_TEMP_ID].m_raw=0;
-    // dev->sen.outs[K30_OUT_TEMP_ID].temperature=0.0;
+    // dev->sen.outs[K30_OUT_TEMP_ID].processed=0.0;
     //
     // dev->sen.outs[K30_OUT_RH_ID].out_id=K30_OUT_RH_ID;
-    // dev->sen.outs[K30_OUT_RH_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
     // dev->sen.outs[K30_OUT_RH_ID].out_val_type = SEN_OUT_VAL_TYPE_INT16;
     // dev->sen.outs[K30_OUT_RH_ID].bit_nr=16;
     // dev->sen.outs[K30_OUT_RH_ID].m_raw=0;
-    // dev->sen.outs[K30_OUT_RH_ID].relative_humidity=0.0;
+    // dev->sen.outs[K30_OUT_RH_ID].processed=0.0;
 
     return i2c_dev_create_mutex(&dev->i2c_dev);
 }
@@ -274,8 +271,8 @@ esp_err_t k30_get_co2(k30_t *dev, float *co2) {
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
   dev->sen.esp_timestamp = esp_timer_get_time();
   dev->sen.outs[K30_OUT_CO2_ID].m_raw = (out_data[1]<<8)|out_data[2];
-  dev->sen.outs[K30_OUT_CO2_ID].co2 = (float)((int16_t)(dev->sen.outs[K30_OUT_CO2_ID].m_raw&0x0000ffff));
-  *co2 = dev->sen.outs[K30_OUT_CO2_ID].co2;
+  dev->sen.outs[K30_OUT_CO2_ID].processed = (float)((int16_t)(dev->sen.outs[K30_OUT_CO2_ID].m_raw&0x0000ffff));
+  *co2 = dev->sen.outs[K30_OUT_CO2_ID].processed;
   ESP_LOGI(TAG, "CO2: %f", *co2);
   return ESP_OK;
 }
@@ -293,8 +290,8 @@ esp_err_t k30_get_temp(k30_t *dev, float *temp) {
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
   dev->sen.esp_timestamp = esp_timer_get_time();
   dev->sen.outs[K30_OUT_TEMP_ID].m_raw = (out_data[1]<<8)|out_data[2];
-  dev->sen.outs[K30_OUT_TEMP_ID].temperature = (float)((int16_t)(dev->sen.outs[K30_OUT_TEMP_ID].m_raw&0x0000ffff));
-  *temp = dev->sen.outs[K30_OUT_TEMP_ID].temperature;
+  dev->sen.outs[K30_OUT_TEMP_ID].processed = (float)((int16_t)(dev->sen.outs[K30_OUT_TEMP_ID].m_raw&0x0000ffff));
+  *temp = dev->sen.outs[K30_OUT_TEMP_ID].processed;
   ESP_LOGI(TAG, "Temperature: %f", *temp);
   return ESP_OK;
 }
@@ -312,9 +309,9 @@ esp_err_t k30_get_rh(k30_t *dev, float *rh) {
   I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
   dev->sen.esp_timestamp = esp_timer_get_time();
   dev->sen.outs[K30_OUT_RH_ID].m_raw = (out_data[1]<<8)|out_data[2];
-  dev->sen.outs[K30_OUT_RH_ID].relative_humidity = (float)((int16_t)(dev->sen.outs[K30_OUT_RH_ID].m_raw&0x0000ffff));
-  dev->sen.outs[K30_OUT_RH_ID].relative_humidity = dev->sen.outs[K30_OUT_RH_ID].relative_humidity/100.00;
-  *rh = dev->sen.outs[K30_OUT_RH_ID].relative_humidity;
+  dev->sen.outs[K30_OUT_RH_ID].processed = (float)((int16_t)(dev->sen.outs[K30_OUT_RH_ID].m_raw&0x0000ffff));
+  dev->sen.outs[K30_OUT_RH_ID].processed = dev->sen.outs[K30_OUT_RH_ID].processed/100.00;
+  *rh = dev->sen.outs[K30_OUT_RH_ID].processed;
   ESP_LOGI(TAG, "Relative humidity: %f", *rh);
   return ESP_OK;
 }
@@ -335,8 +332,8 @@ esp_err_t k30_get_all_outputs(k30_t *dev, float *co2, float *temp, float *rh) {
   if(err == ESP_OK && (out_data[0]&0x01)) {
     onepass = true;
     dev->sen.outs[K30_OUT_CO2_ID].m_raw = (out_data[1]<<8)|out_data[2];
-    dev->sen.outs[K30_OUT_CO2_ID].co2 = (float)((int16_t)(dev->sen.outs[K30_OUT_CO2_ID].m_raw&0x0000ffff));
-    *co2 = dev->sen.outs[K30_OUT_CO2_ID].co2;
+    dev->sen.outs[K30_OUT_CO2_ID].processed = (float)((int16_t)(dev->sen.outs[K30_OUT_CO2_ID].m_raw&0x0000ffff));
+    *co2 = dev->sen.outs[K30_OUT_CO2_ID].processed;
   }
   // vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000));
   vTaskDelay(pdMS_TO_TICKS(500));
@@ -349,8 +346,8 @@ esp_err_t k30_get_all_outputs(k30_t *dev, float *co2, float *temp, float *rh) {
   if(err == ESP_OK && (out_data[0]&0x01)) {
     onepass = true;
     dev->sen.outs[K30_OUT_TEMP_ID].m_raw = (out_data[1]<<8)|out_data[2];
-    dev->sen.outs[K30_OUT_TEMP_ID].temperature = (float)((int16_t)(dev->sen.outs[K30_OUT_TEMP_ID].m_raw&0x0000ffff));
-    *temp = dev->sen.outs[K30_OUT_TEMP_ID].temperature;
+    dev->sen.outs[K30_OUT_TEMP_ID].processed = (float)((int16_t)(dev->sen.outs[K30_OUT_TEMP_ID].m_raw&0x0000ffff));
+    *temp = dev->sen.outs[K30_OUT_TEMP_ID].processed;
   }
   // vTaskDelay(pdMS_TO_TICKS(dev->sen.conf.delay_start_get_us/1000));
   vTaskDelay(pdMS_TO_TICKS(500));
@@ -364,9 +361,9 @@ esp_err_t k30_get_all_outputs(k30_t *dev, float *co2, float *temp, float *rh) {
   if(err == ESP_OK && (out_data[0]&0x01)) {
     onepass = true;
     dev->sen.outs[K30_OUT_RH_ID].m_raw = (out_data[1]<<8)|out_data[2];
-    dev->sen.outs[K30_OUT_RH_ID].relative_humidity = (float)((int16_t)(dev->sen.outs[K30_OUT_RH_ID].m_raw&0x0000ffff));
-    dev->sen.outs[K30_OUT_RH_ID].relative_humidity = dev->sen.outs[K30_OUT_RH_ID].relative_humidity/100.00;
-    *rh = dev->sen.outs[K30_OUT_RH_ID].relative_humidity;
+    dev->sen.outs[K30_OUT_RH_ID].processed = (float)((int16_t)(dev->sen.outs[K30_OUT_RH_ID].m_raw&0x0000ffff));
+    dev->sen.outs[K30_OUT_RH_ID].processed = dev->sen.outs[K30_OUT_RH_ID].processed/100.00;
+    *rh = dev->sen.outs[K30_OUT_RH_ID].processed;
   }
 
   // I2C_DEV_CHECK_LOGE(&dev->i2c_dev, read_ram(dev, , out_data, 2),"I2C error getting CO2");
@@ -427,7 +424,7 @@ esp_err_t k30_iot_sen_get_data(void *dev) {
   // // ret = k30_get_co2((k30_t*) dev, &co2);
   // dev_->sen.esp_timestamp = esp_timer_get_time();
   // dev_->sen.outs[K30_OUT_CO2_ID].m_raw = (out_data[1]<<1)|out_data[2];
-  // dev_->sen.outs[K30_OUT_CO2_ID].co2 = (float)((int16_t)(dev_->sen.outs[K30_OUT_CO2_ID].m_raw&0x0000ffff));
+  // dev_->sen.outs[K30_OUT_CO2_ID].processed = (float)((int16_t)(dev_->sen.outs[K30_OUT_CO2_ID].m_raw&0x0000ffff));
   // I2C_DEV_GIVE_MUTEX(&dev_->i2c_dev);
   // return k30_get_all_outputs((k30_t*) dev, &co2, &temp, &rh);
   return k30_get_co2((k30_t*) dev, &co2);

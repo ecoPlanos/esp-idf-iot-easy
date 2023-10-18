@@ -30,9 +30,9 @@ static const char *TAG = "modern_wind";
 
 static inline esp_err_t modern_wind_calc_temperature(void *modern_wind_sen){
   modern_wind_t *modern_wind_sen_ = (modern_wind_t *)modern_wind_sen;
-  modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].temperature = ((float)modern_wind_sen_->analog_sen.outs[MODERN_WIND_TEMP_ID].voltage - modern_wind_sen_->conf.v0) / modern_wind_sen_->conf.tc; // ℃
-  // modern_wind_sen_->sen.outs[MODERN_WIND_TEMP_ID].temperature = (modern_wind_sen_->outs[MODERN_WIND_TEMP_ID].voltage - MODERN_WIND_TEMPERATURE_V0) / MODERN_WIND_TEMPERATURE_TC; // m/s
-  ESP_LOGD(TAG, "Temperature: %f", modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].temperature);
+  modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].processed = ((float)modern_wind_sen_->analog_sen.outs[MODERN_WIND_TEMP_ID].voltage - modern_wind_sen_->conf.v0) / modern_wind_sen_->conf.tc; // ℃
+  // modern_wind_sen_->sen.outs[MODERN_WIND_TEMP_ID].processed = (modern_wind_sen_->outs[MODERN_WIND_TEMP_ID].processed - MODERN_WIND_TEMPERATURE_V0) / MODERN_WIND_TEMPERATURE_TC; // m/s
+  ESP_LOGD(TAG, "Temperature: %f", modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].processed);
 
   return ESP_OK;
 }
@@ -46,14 +46,14 @@ static inline esp_err_t modern_wind_calc_wind_speed(void *modern_wind_sen){
     ESP_LOGW(TAG, "Wind speed invalid!");
     ESP_LOGD(TAG, "Zero wind voltage: %f mV", modern_wind_sen_->conf.zero_wind_mv);
     ESP_LOGD(TAG, "Output voltage: %u mV", modern_wind_sen_->analog_sen.outs[MODERN_WIND_WIND_ID].voltage);
-    modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_WIND_ID].wind_speed = 0.0;
+    modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_WIND_ID].processed = 0.0;
   } else {
-    ESP_LOGD(TAG, "wind_speed: %f", pow(((((float)modern_wind_sen_->analog_sen.outs[MODERN_WIND_WIND_ID].voltage - modern_wind_sen_->conf.zero_wind_mv)/(3038.517 * pow(modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].temperature, 0.115157))) / 0.087288), 3.009364) * 0.44704);
-    modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_WIND_ID].wind_speed = pow(\
+    ESP_LOGD(TAG, "wind_speed: %f", pow(((((float)modern_wind_sen_->analog_sen.outs[MODERN_WIND_WIND_ID].voltage - modern_wind_sen_->conf.zero_wind_mv)/(3038.517 * pow(modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].processed, 0.115157))) / 0.087288), 3.009364) * 0.44704);
+    modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_WIND_ID].processed = pow(\
       ((((float)modern_wind_sen_->analog_sen.outs[MODERN_WIND_WIND_ID].voltage - modern_wind_sen_->conf.zero_wind_mv)\
-      / (3038.517 * pow(modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].temperature, 0.115157))) / 0.087288), 3.009364) * 0.44704; // m/s
-    // modern_wind_sen_->sen.outs[MODERN_WIND_WIND_ID].wind_speed = pow((((modern_wind_sen_->outs[MODERN_WIND_WIND_ID].voltage - MODERN_WIND_ZERO_WIND_MV) / (3038.517 * pow(modern_wind_sen_->sen.outs[MODERN_WIND_TEMP_ID].temperature, 0.115157))) / 0.087288), 3.009364) * 0.44704; // m/s
-    // modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_WIND_ID].wind_speed = (modern_wind_sen_->analog_sen.outs[MODERN_WIND_WIND_ID].voltage - modern_wind_sen_->conf.zero_wind_mv);
+      / (3038.517 * pow(modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].processed, 0.115157))) / 0.087288), 3.009364) * 0.44704; // m/s
+    // modern_wind_sen_->sen.outs[MODERN_WIND_WIND_ID].processed = pow((((modern_wind_sen_->outs[MODERN_WIND_WIND_ID].processed - MODERN_WIND_ZERO_WIND_MV) / (3038.517 * pow(modern_wind_sen_->sen.outs[MODERN_WIND_TEMP_ID].processed, 0.115157))) / 0.087288), 3.009364) * 0.44704; // m/s
+    // modern_wind_sen_->analog_sen.sen.outs[MODERN_WIND_WIND_ID].processed = (modern_wind_sen_->analog_sen.outs[MODERN_WIND_WIND_ID].processed - modern_wind_sen_->conf.zero_wind_mv);
   }
   return ESP_OK;
 }
@@ -92,10 +92,8 @@ esp_err_t modern_wind_init(modern_wind_t *modern_wind_sen, uint16_t sen_id, adc_
   CHECK(gpio_config(&io_conf));
   CHECK(gpio_set_level(modern_wind_sen->conf.shdn_gpio, 1));
 // #endif
-  modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_WIND_ID].out_type = SEN_TYPE_WIND;
-  modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_WIND_ID].wind_speed=0.0;
-  modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
-  modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].temperature=0.0;
+  modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_WIND_ID].processed=0.0;
+  modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].processed=0.0;
   CHECK(analog_sen_init(&modern_wind_sen->analog_sen));
 
   return ESP_OK;

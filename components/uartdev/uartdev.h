@@ -126,7 +126,7 @@ esp_err_t uart_dev_give_mutex(uart_dev_t *dev);
  * @return ESP_OK on success
  */
 esp_err_t uart_dev_read(const uart_dev_t *dev, const void *out_data,
-        size_t out_size, void *in_data, size_t in_size);
+        size_t out_size, uint32_t timeout);
 
 /**
  * @brief Write to slave device
@@ -138,7 +138,7 @@ esp_err_t uart_dev_read(const uart_dev_t *dev, const void *out_data,
  * @param data Data string to send
  * @return bytes written
  */
-int uart_dev_write(const uart_dev_t *dev, const uint8_t* data);
+esp_err_t uart_dev_write(const uart_dev_t *dev, const uint8_t* data, size_t data_size);
 
 /**
  * @brief Receive from slave device

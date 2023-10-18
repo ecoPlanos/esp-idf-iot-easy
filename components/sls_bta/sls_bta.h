@@ -26,7 +26,7 @@ extern "C" {
 
 #define SLS_BTA_LIB_VERSION_MAJOR 1
 #define SLS_BTA_LIB_VERSION_MINOR 0
-#define SLS_BTA_LIB_VERSION_PATCH 0
+#define SLS_BTA_LIB_VERSION_PATCH 1
 #define SLS_BTA_LIB_VERSION  (SLS_BTA_LIB_VERSION_MAJOR << 16)|(SLS_BTA_LIB_VERSION_MINOR << 8)|SLS_BTA_LIB_VERSION_PATCH
 
 enum {
@@ -53,7 +53,7 @@ esp_err_t sls_bta_init(analog_sen_t *sls_bta_sen, uint16_t sen_id, adc_unit_t so
 */
 esp_err_t sls_bta_config_output(analog_sen_t *sls_bta_sen, uint8_t oud_idx, adc_unit_t unit, adc_channel_t analog_channel);
 
-esp_err_t sls_bta_calc_sound_pressure(void *sls_bta_sen);
+esp_err_t sls_bta_calc_sound_pressure(analog_sen_t *sls_bta_sen);
 
 #ifdef __cplusplus
 }

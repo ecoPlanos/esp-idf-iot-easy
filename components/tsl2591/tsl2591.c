@@ -346,11 +346,10 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     dev->sen.status.fail_time = 0;
 
     dev->sen.outs[TSL2591_OUT_CH0_ID].out_id=TSL2591_OUT_CH0_ID;
-    dev->sen.outs[TSL2591_OUT_CH0_ID].out_type = SEN_TYPE_LIGHT_FULL_SPECTRUM;
     dev->sen.outs[TSL2591_OUT_CH0_ID].out_val_type = SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[TSL2591_OUT_CH0_ID].bit_nr=16;
     dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw=0;
-    dev->sen.outs[TSL2591_OUT_CH0_ID].light_full=0.0;
+    dev->sen.outs[TSL2591_OUT_CH0_ID].processed=0.0;
     // dev->sen.outs[TSL2591_OUT_CH0_ID].conf.srate=0;
     // dev->sen.outs[TSL2591_OUT_CH0_ID].timestamp=0;
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[TSL2591_OUT_CH0_ID].gains_agc, SEN_AGC_TYPE_GAIN, TSL2591_GAINS_NR, gains, gains_max_values,gains_min_values,gains_th_h,gains_th_l));
@@ -359,11 +358,10 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc, SEN_AGC_TYPE_NONE, TSL2591_INTEGRATION_TIMES_NR, int_times, itimes_max_values,itimes_min_values,itimes_th_h,itimes_th_l));
     // dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.state = true;
     dev->sen.outs[TSL2591_OUT_CH1_ID].out_id=TSL2591_OUT_CH1_ID;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].out_type = SEN_TYPE_LIGHT_IR;
     dev->sen.outs[TSL2591_OUT_CH1_ID].out_val_type = SEN_OUT_VAL_TYPE_UINT16;
     dev->sen.outs[TSL2591_OUT_CH1_ID].bit_nr=16;
     dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw=0;
-    dev->sen.outs[TSL2591_OUT_CH1_ID].light_ir=0.0;
+    dev->sen.outs[TSL2591_OUT_CH1_ID].processed=0.0;
     // dev->sen.outs[TSL2591_OUT_CH1_ID].conf.srate=0;
     // dev->sen.outs[TSL2591_OUT_CH1_ID].timestamp=0;
     ESP_ERROR_CHECK(sensor_out_agc_init(&dev->sen.outs[TSL2591_OUT_CH1_ID].gains_agc, SEN_AGC_TYPE_GAIN,TSL2591_GAINS_NR, gains, gains_max_values,gains_min_values,gains_th_h,gains_th_l));
@@ -585,11 +583,11 @@ esp_err_t tsl2591_calculate_lux(tsl2591_t *dev, uint16_t channel0, uint16_t chan
     *lux = (((float)channel0 - (float)channel1)) *
         (1.0F - ((float)channel1 / (float)channel0)) / cpl;
     if(*lux) {
-      dev->sen.outs[TSL2591_OUT_CH0_ID].light_full = *lux;
-      dev->sen.outs[TSL2591_OUT_CH1_ID].light_ir = *lux;
+      dev->sen.outs[TSL2591_OUT_CH0_ID].processed = *lux;
+      dev->sen.outs[TSL2591_OUT_CH1_ID].processed = *lux;
     } else {
-      dev->sen.outs[TSL2591_OUT_CH0_ID].light_full = -1.0;  //TODO: this is just for debug!
-      dev->sen.outs[TSL2591_OUT_CH1_ID].light_ir = -2.0;    //TODO: this is just for debug!
+      dev->sen.outs[TSL2591_OUT_CH0_ID].processed = -1.0;  //TODO: this is just for debug!
+      dev->sen.outs[TSL2591_OUT_CH1_ID].processed = -2.0;    //TODO: this is just for debug!
     }
 
     return ESP_OK;
