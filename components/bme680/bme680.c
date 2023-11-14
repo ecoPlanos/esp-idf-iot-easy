@@ -613,24 +613,28 @@ esp_err_t bme680_init_desc(bme680_t *dev, uint8_t addr, i2c_port_t port, gpio_nu
 
   dev->sen.outs[BME680_OUT_TEMP_ID].out_id=BME680_OUT_TEMP_ID;
   dev->sen.outs[BME680_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+  dev->sen.outs[BME680_OUT_TEMP_ID].out_type=SEN_TYPE_INTERNAL_TEMPERATURE;
   dev->sen.outs[BME680_OUT_TEMP_ID].m_raw=0;
   dev->sen.outs[BME680_OUT_TEMP_ID].processed=0.0;
   // dev->sen.outs[BME680_OUT_TEMP_ID].conf.srate=0;
 
   dev->sen.outs[BME680_OUT_PRESSURE_ID].out_id=BME680_OUT_PRESSURE_ID;
   dev->sen.outs[BME680_OUT_PRESSURE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+  dev->sen.outs[BME680_OUT_PRESSURE_ID].out_type=SEN_TYPE_PRESSURE;
   dev->sen.outs[BME680_OUT_PRESSURE_ID].m_raw=0;
   dev->sen.outs[BME680_OUT_PRESSURE_ID].processed=0.0;
   // dev->sen.outs[BME680_OUT_PRESSURE_ID].conf.srate=0;
 
   dev->sen.outs[BME680_OUT_RH_ID].out_id=BME680_OUT_RH_ID;
   dev->sen.outs[BME680_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+  dev->sen.outs[BME680_OUT_RH_ID].out_type=SEN_TYPE_RELATIVE_HUMIDITY;
   dev->sen.outs[BME680_OUT_RH_ID].m_raw=0;
   dev->sen.outs[BME680_OUT_RH_ID].processed=0.0;
   // dev->sen.outs[BME680_OUT_RH_ID].conf.srate=0;
 
   dev->sen.outs[BME680_OUT_GAS_ID].out_id=BME680_OUT_GAS_ID;
   dev->sen.outs[BME680_OUT_GAS_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT32;
+  dev->sen.outs[BME680_OUT_GAS_ID].out_type=SEN_TYPE_GAS_RESISTANCE;
   dev->sen.outs[BME680_OUT_GAS_ID].m_raw=0;
   dev->sen.outs[BME680_OUT_GAS_ID].processed=0.0;
   // dev->sen.outs[BME680_OUT_GAS_ID].conf.srate=0;

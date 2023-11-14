@@ -42,7 +42,8 @@ esp_err_t press_sen_init(analog_sen_t *press_sen_sen, uint8_t samples_filter, ui
   CHECK_ARG(press_sen_sen);
   CHECK(analog_sen_init_desc(press_sen_sen, sen_id, sen_name, 1, press_sen_calc_pressure));
   CHECK(analog_sen_config_output(press_sen_sen, PRESS_SEN_PRESSURE_ID, press_unit, press_channel, NULL));
-
+  press_sen_sen->sen.outs[PRESS_SEN_PRESSURE_ID].out_type = SEN_TYPE_PRESSURE;
+  press_sen_sen->sen.outs[PRESS_SEN_PRESSURE_ID].out_val_type = SEN_OUT_VAL_TYPE_FLOAT;
   press_sen_sen->sen.outs[PRESS_SEN_PRESSURE_ID].processed=0.0;
   press_sen_sen->sen.conf.samples_filter=CONFIG_PRESS_SEN_DEFAULT_SAMP_FILTER;
   press_sen_sen->sen.conf.period_ms=CONFIG_PRESS_SEN_DEFAULT_PERIOD_MS;

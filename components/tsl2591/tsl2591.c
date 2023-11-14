@@ -347,6 +347,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
 
     dev->sen.outs[TSL2591_OUT_CH0_ID].out_id=TSL2591_OUT_CH0_ID;
     dev->sen.outs[TSL2591_OUT_CH0_ID].out_val_type = SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[TSL2591_OUT_CH0_ID].out_type = SEN_TYPE_LIGHT_FULL_SPECTRUM;
     dev->sen.outs[TSL2591_OUT_CH0_ID].bit_nr=16;
     dev->sen.outs[TSL2591_OUT_CH0_ID].m_raw=0;
     dev->sen.outs[TSL2591_OUT_CH0_ID].processed=0.0;
@@ -359,6 +360,7 @@ esp_err_t tsl2591_init_desc(tsl2591_t *dev, i2c_port_t port, gpio_num_t sda_gpio
     // dev->sen.outs[TSL2591_OUT_CH0_ID].itimes_agc.state = true;
     dev->sen.outs[TSL2591_OUT_CH1_ID].out_id=TSL2591_OUT_CH1_ID;
     dev->sen.outs[TSL2591_OUT_CH1_ID].out_val_type = SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[TSL2591_OUT_CH1_ID].out_type = SEN_TYPE_LIGHT_IR;
     dev->sen.outs[TSL2591_OUT_CH1_ID].bit_nr=16;
     dev->sen.outs[TSL2591_OUT_CH1_ID].m_raw=0;
     dev->sen.outs[TSL2591_OUT_CH1_ID].processed=0.0;

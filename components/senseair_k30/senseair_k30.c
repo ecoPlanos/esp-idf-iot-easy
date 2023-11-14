@@ -177,6 +177,7 @@ esp_err_t k30_init_desc(k30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_n
 
     dev->sen.outs[K30_OUT_CO2_ID].out_id=K30_OUT_CO2_ID;
     dev->sen.outs[K30_OUT_CO2_ID].out_val_type = SEN_OUT_VAL_TYPE_INT16;
+    dev->sen.outs[K30_OUT_CO2_ID].out_type = SEN_TYPE_CO2;
     dev->sen.outs[K30_OUT_CO2_ID].bit_nr=16;
     dev->sen.outs[K30_OUT_CO2_ID].m_raw=0;
     dev->sen.outs[K30_OUT_CO2_ID].processed=0.0;

@@ -241,12 +241,14 @@ esp_err_t sht85_init_desc(sht85_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
 
     dev->sen.outs[SHT85_OUT_TEMP_ID].out_id=SHT85_OUT_TEMP_ID;
     dev->sen.outs[SHT85_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[SHT85_OUT_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
     dev->sen.outs[SHT85_OUT_TEMP_ID].m_raw=0;
     dev->sen.outs[SHT85_OUT_TEMP_ID].processed=0.0;
     // dev->sen.outs[SHT85_OUT_TEMP_ID].conf.srate=0;
 
     dev->sen.outs[SHT85_OUT_RH_ID].out_id=SHT85_OUT_RH_ID;
     dev->sen.outs[SHT85_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[SHT85_OUT_RH_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
     dev->sen.outs[SHT85_OUT_RH_ID].m_raw=0;
     dev->sen.outs[SHT85_OUT_RH_ID].processed=0.0;
     // dev->sen.outs[SHT85_OUT_RH_ID].conf.srate=0;

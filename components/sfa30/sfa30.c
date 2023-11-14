@@ -193,18 +193,21 @@ esp_err_t sfa30_init_desc(sfa30_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gp
 
   dev->sen.outs[SFA30_OUT_HCHO_ID].out_id=SFA30_OUT_HCHO_ID;
   dev->sen.outs[SFA30_OUT_HCHO_ID].out_val_type=SEN_OUT_VAL_TYPE_INT16;
+  dev->sen.outs[SFA30_OUT_HCHO_ID].out_type = SEN_TYPE_HCHO;
   dev->sen.outs[SFA30_OUT_HCHO_ID].m_raw=0;
   dev->sen.outs[SFA30_OUT_HCHO_ID].processed=0.0;
   // dev->sen.outs[SFA30_OUT_HCHO_ID].conf.srate=0;
 
   dev->sen.outs[SFA30_OUT_RH_ID].out_id=SFA30_OUT_RH_ID;
   dev->sen.outs[SFA30_OUT_RH_ID].out_val_type=SEN_OUT_VAL_TYPE_INT16;
+  dev->sen.outs[SFA30_OUT_RH_ID].out_type = SEN_TYPE_RELATIVE_HUMIDITY;
   dev->sen.outs[SFA30_OUT_RH_ID].m_raw=0;
   dev->sen.outs[SFA30_OUT_RH_ID].processed=0.0;
   // dev->sen.outs[SFA30_OUT_RH_ID].conf.srate=0;
 
   dev->sen.outs[SFA30_OUT_TEMP_ID].out_id=SFA30_OUT_TEMP_ID;
   dev->sen.outs[SFA30_OUT_TEMP_ID].out_val_type=SEN_OUT_VAL_TYPE_INT16;
+  dev->sen.outs[SFA30_OUT_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
   dev->sen.outs[SFA30_OUT_TEMP_ID].m_raw=0;
   dev->sen.outs[SFA30_OUT_TEMP_ID].processed=0.0;
   // dev->sen.outs[SFA30_OUT_TEMP_ID].conf.srate=0;

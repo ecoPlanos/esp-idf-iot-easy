@@ -65,7 +65,11 @@ esp_err_t sls_bta_init(analog_sen_t *sls_bta_sen, uint16_t sen_id, adc_unit_t so
   sls_bta_sen->sen.conf.period_ms = CONFIG_SLS_BTA_DEFAULT_PERIOD_MS;
   sls_bta_sen->sen.conf.samples_filter = CONFIG_SLS_BTA_DEFAULT_SAMP_FILTER;
   sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].processed=0.0;
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].out_type = SEN_TYPE_SOUND_PRESSURE;
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].out_val_type = SEN_OUT_VAL_TYPE_FLOAT;
   sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].processed=0.0;
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].out_type = SEN_TYPE_VOLTAGE;
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].out_val_type = SEN_OUT_VAL_TYPE_FLOAT;
   CHECK(analog_sen_init(sls_bta_sen));
 
   return ESP_OK;
@@ -76,6 +80,6 @@ esp_err_t sls_bta_calc_sound_pressure(analog_sen_t *sls_bta_sen){
   ESP_LOGD(TAG, "ref voltage: %u mv", sls_bta_sen->outs[SLS_BTA_OUT_REF_ID].voltage);
   sls_bta_sen->sen.outs[SLS_BTA_OUT_SOUND_ID].processed = K0+K1*((float)sls_bta_sen->outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752) +
                                 K2*((float)sls_bta_sen->outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752)*(sls_bta_sen->outs[SLS_BTA_OUT_SOUND_ID].voltage/655.963302752);
-  sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].processed = (float)sls_bta_sen->outs[SLS_BTA_OUT_REF_ID].voltage;
+  sls_bta_sen->sen.outs[SLS_BTA_OUT_REF_ID].processed = (float)sls_bta_sen->outs[SLS_BTA_OUT_REF_ID].voltage/1000.0;
   return ESP_OK;
 }

@@ -399,72 +399,84 @@ esp_err_t pms1003_init_desc(pms1003_t *dev, uart_port_t port, gpio_num_t tx_gpio
 
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ID;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].out_type = SEN_TYPE_PM1_0_CON_UNIT;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ID;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].out_type = SEN_TYPE_PM2_5_CON_UNIT;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_id=PMS1003_OUT_PM10_CON_UNIT_ID;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].out_type = SEN_TYPE_PM10_CON_UNIT;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PM10_CON_UNIT_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_PM1_0_CON_UNIT_ATMOSPHE;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PM1_0_CON_UNIT_ATMOSPHE_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_PM2_5_CON_UNIT_ATMOSPHE;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PM2_5_CON_UNIT_ATMOSPHE_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_id=PMS1003_OUT_CON_UNIT_ATMOSPHE_ID;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].out_type = SEN_TYPE_CON_UNIT_ATMOSPHE;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_CON_UNIT_ATMOSPHE_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_3_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_0_3_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_3_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_0_5_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_0_5_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_0_5_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_1_0_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_1_0_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_1_0_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_2_5_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_2_5_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_2_5_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_5_0_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_5_0_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_5_0_UM_ID].conf.srate = 0;
 
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_id=PMS1003_OUT_PARTICLE_NR_10_UM_ID;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_val_type=SEN_OUT_VAL_TYPE_UINT16;
+    dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].out_type = SEN_TYPE_PARTICLE_NR_10_UM;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].m_raw=0;
     dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].processed=0.0;
     // dev->sen.outs[PMS1003_OUT_PARTICLE_NR_10_UM_ID].conf.srate = 0;

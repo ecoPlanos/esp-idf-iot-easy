@@ -31,7 +31,7 @@ esp_err_t amph_ge_17xx_init(analog_sen_t *amph_ge_sen, adc_unit_t adc_unit, adc_
   CHECK_ARG(amph_ge_sen);
   CHECK(analog_sen_init_desc(amph_ge_sen, sen_id, sen_name, 1, amph_ge_17xx_calc_temperature));
   CHECK(analog_sen_config_output(amph_ge_sen, AMPH_GE_17XX_OUT_TEMPERATURE_ID, adc_unit, adc_channel, NULL));
-
+  amph_ge_sen->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].out_type = SEN_TYPE_INTERNAL_TEMPERATURE;
   amph_ge_sen->sen.outs[AMPH_GE_17XX_OUT_TEMPERATURE_ID].processed=0.0;
   amph_ge_sen->sen.conf.period_ms = CONFIG_AMPH_GE17XX_DEFAULT_PERIOD_MS;
   amph_ge_sen->sen.conf.samples_filter = CONFIG_AMPH_GE17XX_DEFAULT_SAMP_FILTER;

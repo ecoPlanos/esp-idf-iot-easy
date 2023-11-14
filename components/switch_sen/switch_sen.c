@@ -306,6 +306,23 @@ esp_err_t switch_sen_init(switch_sen_t *dev, sen_out_trig_dir_type_t trigger_dir
   dev->sen.outs[0].out_val_type=SEN_OUT_VAL_TYPE_BOOL;
   dev->sen.outs[0].m_raw=0;
   dev->sen.conf.srate=0;
+  switch(switch_type) {
+    case SWITCH_TYPE_ACTUATOR:
+      dev->sen.outs[0].out_type=SEN_TYPE_SWITCH_ACTUATOR;
+    case SWITCH_TYPE_ACTUATOR_PWM:
+      dev->sen.outs[0].out_type=SEN_TYPE_SWITCH_ACTUATOR_PWM;
+    break;
+    case SWITCH_TYPE_STATE:
+      dev->sen.outs[0].out_type=SEN_TYPE_SWITCH;
+    break;
+    case SWITCH_TYPE_COUNTER:
+      dev->sen.outs[0].out_type=SEN_TYPE_SWITCH;
+    break;
+    default:
+      ESP_LOGE(TAG,"Invalid switch type!");
+      return ESP_ERR_INVALID_ARG;
+    break;
+  }
 
   gpio_config_t io_conf;
   io_conf.intr_type = GPIO_INTR_ANYEDGE;

@@ -60,6 +60,8 @@ esp_err_t yf_init(switch_sen_t *yf_sen, uint32_t min_period_us, uint16_t sen_id,
   CHECK(switch_sen_init(yf_sen, SEN_OUT_TRIGGER_RE, min_period_us, 0, water_flow_gpio, GPIO_PULLUP_DISABLE, GPIO_PULLDOWN_ENABLE, 0, 0, sen_id, sen_name, SWITCH_TYPE_COUNTER, yf_calc_water_flow));
   // yf_sen->sen.conf.period_ms = period_ms;
   // yf_sen->sen.conf.trigger_type = SEN_OUT_TRIGGER_TYPE_TIME;
+  yf_sen->sen.outs[YF_OUT_FLOW_ID].out_type = SEN_TYPE_WATER_FLOW;
+  yf_sen->sen.outs[YF_OUT_FLOW_ID].out_val_type = SEN_OUT_VAL_TYPE_FLOAT;
   yf_sen->sen.outs[YF_OUT_FLOW_ID].processed=0.0;
   yf_sen->info.model=yf_model;
 

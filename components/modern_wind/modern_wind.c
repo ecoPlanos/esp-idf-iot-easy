@@ -93,7 +93,9 @@ esp_err_t modern_wind_init(modern_wind_t *modern_wind_sen, uint16_t sen_id, adc_
   CHECK(gpio_set_level(modern_wind_sen->conf.shdn_gpio, 1));
 // #endif
   modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_WIND_ID].processed=0.0;
+  modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_WIND_ID].out_type = SEN_TYPE_WIND;
   modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].processed=0.0;
+  modern_wind_sen->analog_sen.sen.outs[MODERN_WIND_TEMP_ID].out_type = SEN_TYPE_AMBIENT_TEMPERATURE;
   CHECK(analog_sen_init(&modern_wind_sen->analog_sen));
 
   return ESP_OK;
